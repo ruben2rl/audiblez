@@ -44,8 +44,6 @@ def main(file_path, lang, voice):
     i = 1
     chapter_mp3_files = []
     for text in texts:
-        if i > 8:
-            continue
         chapter_filename = filename.replace('.epub', f'_chapter_{i}.wav')
         chapter_mp3_files.append(chapter_filename)
         if Path(chapter_filename).exists() or Path(chapter_filename.replace('.wav', '.mp3')).exists():
@@ -69,8 +67,6 @@ def main(file_path, lang, voice):
         progress = int((total_chars - remaining_chars) / total_chars * 100)
         print(f'Progress: {progress}%')
         print()
-        # if has_ffmpeg:
-        #     convert_to_mp3(chapter_filename)
         i += 1
 
     if has_ffmpeg:
@@ -113,25 +109,6 @@ def strfdelta(tdelta, fmt='{D:02}d {H:02}h {M:02}m {S:02}s'):
         if field in desired_fields and field in constants:
             values[field], remainder = divmod(remainder, constants[field])
     return f.format(fmt, **values)
-
-
-# def convert_to_mp3(wav_file):
-#     mp3_file = wav_file.replace('.wav', '.mp3')
-#     print(f'In parallel, converting {wav_file} to {mp3_file}...')
-#     subprocess.Popen(['ffmpeg', '-i', wav_file, mp3_file, '&& rm', wav_file, '&& echo "mp3 convertion done."'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-
-
-# def create_m4b(chapter_files, filename):
-#     if shutil.which('ffmpeg') is None:
-#         return
-#     print('Creating M4B file...')
-#     filename_m4b = filename.replace('.epub', '.m4b')
-#     concat_str = '|'.join(chapter_files)
-#     cmd = ['ffmpeg', '-i', f'concat:{concat_str}', '-c:a', 'aac', '-b:a', '64k', '-f', 'mp4', f'{filename_m4b}']
-#     print(cmd)
-#     proc = subprocess.run(cmd)
-#     if proc.returncode == 0:
-#         print(f'{filename_m4b} created. Enjoy your audiobook.')
 
 
 def create_m4b(chaptfer_files, filename):
