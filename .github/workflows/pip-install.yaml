@@ -1,0 +1,20 @@
+name: GitHub Action for installing and testing the package on Python 3.11
+run-name: pip install and run
+on: [ push, pull_request ]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Set up Python 3.11
+        uses: actions/setup-python@v2
+        with:
+          python-version: '3.11'
+      - name: Install audiblez
+        run: |
+          python -m pip install audiblez
+      - name: Check it runs as module
+        run: |
+          python -m audiblez --help
+      - name: check it runs as script
+        run: |
+          audiblez --help
