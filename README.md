@@ -1,4 +1,5 @@
 # Audiblez: Generate  audiobooks from e-books
+[![Installing via pip and running](https://github.com/santinic/audiblez/actions/workflows/pip-install.yaml/badge.svg)](https://github.com/santinic/audiblez/actions/workflows/pip-install.yaml)
 
 Audiblez generates `.m4b` audiobooks from regular `.epub` e-books, 
 using Kokoro's high-quality speech synthesis.
@@ -17,7 +18,7 @@ at a rate of about 80 characters per second.
 ## How to install and run
 
 If you have Python 3.11 or Python 3.12 on your computer, you can install it with pip.
-Be aware that it won't work with Python 3.10 or lower.
+Be aware that it won't work with Python 3.13.
 Then you also need to download the onnx and voices files in the same folder, which are about ~360MB:
 
 ```bash
