@@ -1,9 +1,11 @@
+#!/usr/bin/env python3
 # audiblez - A program to convert e-books into audiobooks using high-quality
 # Kokoro-82M text-to-speech model.
 # Distributed under the MIT License for educational purposes.
 # by Claudio Santini (2025) - https://claudio.uk
 
 import argparse
+import sys
 import time
 import shutil
 import subprocess
@@ -20,7 +22,7 @@ kokoro = Kokoro('kokoro-v0_19.onnx', 'voices.json')
 
 
 def main(file_path, lang, voice):
-    file_name = Path(file_path).name
+    filename = Path(file_path).name
     with warnings.catch_warnings():
         book = epub.read_epub(file_path)
     title = book.get_metadata('DC', 'title')[0][0]
@@ -31,32 +33,40 @@ def main(file_path, lang, voice):
     print([c.get_name() for c in chapters])
     texts = extract_texts(chapters)
     has_ffmpeg = shutil.which('ffmpeg') is not None
-    use_fmmpeg = has_ffmpeg and not args.wav
+    if not has_ffmpeg:
+        print('\033[91m' + 'ffmpeg not found. Please install ffmpeg to create mp3 and m4b audiobook files.' + '\033[0m')
+    total_chars = sum([len(t) for t in texts])
+    print('Started at:', time.strftime('%H:%M:%S'))
+    print(f'Total characters: {total_chars:,}')
+    print('Total words:', len(' '.join(texts).split(' ')))
 
     i = 1
     for text in texts:
-        chapter_filename = file_name.lower().replace('.epub', f'_chapter_{i}.wav')
+        chapter_filename = filename.replace('.epub', f'_chapter_{i}.wav')
         if Path(chapter_filename).exists() or Path(chapter_filename.replace('.wav', '.mp3')).exists():
             print(f'File for chapter {i} already exists. Skipping')
             i += 1
             continue
         print(f'Reading chapter {i} ({len(text):,} characters)...')
+        if i == 1:
+            text = intro + '.\n\n' + text
         start_time = time.time()
         samples, sample_rate = kokoro.create(text, voice=voice, speed=1.0, lang=lang)
         sf.write(f'{chapter_filename}', samples, sample_rate)
         end_time = time.time()
         delta_seconds = end_time - start_time
-        charters_per_second = len(text) / delta_seconds
+        chars_per_sec = len(text) / delta_seconds
         print('Chapter written to', chapter_filename)
-        print(f'Chapter {i} read in {delta_seconds:.2f} seconds ({charters_per_second:.0f} charters per second')
-        remaining_characters = sum([len(t) for t in texts[i - 1:]])
-        remaining_time = remaining_characters / charters_per_second
+        print(f'Chapter {i} read in {delta_seconds:.2f} seconds ({chars_per_sec:.0f} characters per second)')
+        remaining_chars = sum([len(t) for t in texts[i - 1:]])
+        remaining_time = remaining_chars / chars_per_sec
         print(f'Estimated time remaining: {strfdelta(remaining_time)}')
         print()
-        if use_fmmpeg:
-            print(f'In parallel, converting chapter {i} to mp3...')
+        if has_ffmpeg:
             convert_to_mp3(chapter_filename)
         i += 1
+    if has_ffmpeg:
+        create_m4b(filename)
 
 
 def extract_texts(chapters):
@@ -98,12 +108,18 @@ def strfdelta(tdelta, fmt='{D:02}d {H:02}h {M:02}m {S:02}s'):
 
 
 def convert_to_mp3(wav_file):
-    if shutil.which('ffmpeg') is None:
-        print('ffmpeg not found. Please install ffmpeg to convert .wav files to .mp3')
-        return
     mp3_file = wav_file.replace('.wav', '.mp3')
-    print(f'Converting {wav_file} to {mp3_file}...')
-    subprocess.Popen(['ffmpeg', '-i', wav_file, mp3_file, ' && rm ', wav_file], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    print(f'In parallel, converting {wav_file} to {mp3_file}...')
+    subprocess.Popen(['ffmpeg', '-i', wav_file, mp3_file, '&& rm', wav_file, '&& echo "mp3 convertion done."'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+
+
+def create_m4b(filename):
+    if shutil.which('ffmpeg') is None:
+        return
+    print('Creating M4B file...')
+    filename_m4b = filename.replace('.epub', '.m4b')
+    subprocess.run(['ffmpeg', '-i', 'concat:chapter_*.mp3', '-acodec', 'copy', f'{filename_m4b}'])
+    print(f'{filename_m4b} created. Enjoy your audbiook.')
 
 
 if __name__ == '__main__':
@@ -111,10 +127,14 @@ if __name__ == '__main__':
     voices_str = ', '.join(voices)
     epilog = 'example:\n' + \
              '  audiblez book.epub -l en-us -v af_sky'
+    default_voice = 'af_sky' if 'af_sky' in voices else voices[0]
     parser = argparse.ArgumentParser(epilog=epilog, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('epub_file_path', help='Path to the epub file')
     parser.add_argument('-l', '--lang', default='en-gb', help='Language code: en-gb, en-us, fr-fr, ja, ko, cmn')
-    parser.add_argument('-v', '--voice', default=voices[0], help=f'Choose narrating voice: {voices_str}')
-    parser.add_argument('-w', '--wav', help="Don't convert to .mp3, just create .wav files", action='store_true')
+    parser.add_argument('-v', '--voice', default=default_voice, help=f'Choose narrating voice: {voices_str}')
+    parser.add_argument('-w', '--wav', help="Output to .wav files (instead of mp3, which the default)", action='store_true')
+    if len(sys.argv) == 1:
+        parser.print_help(sys.stderr)
+        sys.exit(1)
     args = parser.parse_args()
     main(args.epub_file_path, args.lang, args.voice)
