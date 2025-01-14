@@ -6,3 +6,4 @@ epub
 *.sh
 *.json
 *.onnx
+dist
