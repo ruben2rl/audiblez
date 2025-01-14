@@ -1,6 +1,6 @@
 [project]
 name = "audiblez"
-version = "0.1.1"
+version = "0.1.2"
 description = ""
 authors = [
     { name = "Claudio Santini", email = "hireclaudio@gmail.com" }
@@ -86,6 +86,7 @@ build-backend = "poetry.core.masonry.api"
 Homepage = "https://claudio.uk/posts/epub-to-audiobook.html"
 Documentation = "https://github.com/santinic/audiblez"
 Repository = "https://github.com/santinic/audiblez"
+Issues = "https://github.com/santinic/audiblez/issues"
 
 [project.scripts]
-audiblez = "audiblez.cli:main"
+audiblez = "audiblez:main"

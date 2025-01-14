@@ -38,7 +38,6 @@ and at the end it will produce a `book.m4b` file with the whole book you can lis
 It will only produce the `.m4b` file if you have `ffmpeg` installed on your machine.
 
 ## Supported Languages
-
 - 🇺🇸 en-US
 - 🇬🇧 en-GB
 - 🇫🇷 fr-FR
@@ -47,18 +46,6 @@ It will only produce the `.m4b` file if you have `ffmpeg` installed on your mach
 - 🇨🇳 zh-CN
 
 ## Supported Voices
-
+Available voices are `af`, `af_bella`, `af_nicole`, `af_sarah`, `af_sky`, `am_adam`, `am_michael`, `bf_emma`, `bf_isabella`, `bm_george`, `bm_lewis`.
 You can try them here: [https://huggingface.co/spaces/hexgrad/Kokoro-TTS](https://huggingface.co/spaces/hexgrad/Kokoro-TTS)
-
-- af
-- af_bella
-- af_nicole
-- af_sarah 
-- af_sky
-- am_adam
-- am_michael
-- bf_emma
-- bf_isabella
-- bm_george
-- bm_lewis
 
