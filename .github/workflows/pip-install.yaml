@@ -2,7 +2,7 @@ name: GitHub Action for installing and testing the package on Python 3.11
 run-name: pip install and run
 on: [ push, pull_request ]
 jobs:
-  build:
+  install-and-run:
     runs-on: ubuntu-latest
     steps:
       - name: Set up Python 3.11

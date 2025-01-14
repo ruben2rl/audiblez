@@ -3,7 +3,7 @@ name = "audiblez"
 version = "0.1.0"
 description = ""
 authors = [
-    {name = "Claudio Santini",email = "hireclaudio@gmail.com"}
+    { name = "Claudio Santini", email = "hireclaudio@gmail.com" }
 ]
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
@@ -81,3 +81,11 @@ dependencies = [
 [build-system]
 requires = ["poetry-core>=2.0.0,<3.0.0"]
 build-backend = "poetry.core.masonry.api"
+
+[project.urls]
+Homepage = "https://claudio.uk/posts/epub-to-audiobook.html"
+Documentation = "https://github.com/santinic/audiblez"
+Repository = "https://github.com/santinic/audiblez"
+
+[project.scripts]
+audiblez = "audiblez.cli:main"

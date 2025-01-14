@@ -1,8 +1,7 @@
 #!/usr/bin/env python3
-# audiblez - A program to convert e-books into audiobooks using high-quality
-# Kokoro-82M text-to-speech model.
-# Distributed under the MIT License for educational purposes.
-# by Claudio Santini (2025) - https://claudio.uk
+# audiblez - A program to convert e-books into audiobooks using
+# Kokoro-82M model for high-quality text-to-speech synthesis.
+# by Claudio Santini 2025 - https://claudio.uk
 
 import argparse
 import sys
