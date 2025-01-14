@@ -46,7 +46,7 @@ def main(file_path, lang, voice):
     for text in texts:
         chapter_filename = filename.replace('.epub', f'_chapter_{i}.wav')
         chapter_mp3_files.append(chapter_filename)
-        if Path(chapter_filename).exists() or Path(chapter_filename.replace('.wav', '.mp3')).exists():
+        if Path(chapter_filename).exists():
             print(f'File for chapter {i} already exists. Skipping')
             i += 1
             continue
@@ -118,7 +118,7 @@ def create_m4b(chaptfer_files, filename):
         for wav_file in chaptfer_files:
             audio = AudioSegment.from_wav(wav_file)
             combined_audio += audio
-        print('Creating M4A file...')
+        print('Converting to Mp4...')
         combined_audio.export(tmp_filename, format="mp4", codec="aac", bitrate="64k")
     final_filename = filename.replace('.epub', '.m4b')
     print('Creating M4B file...')
