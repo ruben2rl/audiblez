@@ -1,0 +1,9 @@
+venv
+*.wav
+*.mp3
+*.txt
+gene
+epub
+*.sh
+*.json
+*.onnx
