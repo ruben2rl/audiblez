@@ -19,7 +19,7 @@ at a rate of about 80 characters per second.
 
 If you have Python 3.11 or Python 3.12 on your computer, you can install it with pip.
 Be aware that it won't work with Python 3.13.
-Then you also need to download the onnx and voices files in the same folder, which are about ~360MB:
+Then you also need to download a couple of additional files in the same folder, which are about ~360MB:
 
 ```bash
 pip install audiblez
@@ -27,7 +27,7 @@ wget https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/k
 wget https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/voices.json
 ```
 
-Then to convert an epub file into an audiobook, just run:
+Then, to convert an epub file into an audiobook, just run:
 
 ```bash
 audiblez book.epub -l en-gb -v af_sky

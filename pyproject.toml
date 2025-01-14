@@ -1,6 +1,6 @@
 [project]
 name = "audiblez"
-version = "0.1.4"
+version = "0.1.5"
 description = ""
 authors = [
     { name = "Claudio Santini", email = "hireclaudio@gmail.com" }
