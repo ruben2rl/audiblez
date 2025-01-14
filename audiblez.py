@@ -128,6 +128,11 @@ def create_m4b(chaptfer_files, filename):
 
 
 if __name__ == '__main__':
+    if not Path('kokoro-v0_19.onnx').exists() or not Path('voices.json').exists():
+        print('Error: kokoro-v0_19.onnx and voices.json must be in the current directory. Please download them with:')
+        print('wget https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/kokoro-v0_19.onnx')
+        print('wget https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/voices.json')
+        sys.exit(1)
     voices = list(kokoro.get_voices())
     voices_str = ', '.join(voices)
     epilog = 'example:\n' + \
