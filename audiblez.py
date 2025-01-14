@@ -18,10 +18,8 @@ from kokoro_onnx import Kokoro
 from ebooklib import epub
 from pydub import AudioSegment
 
-kokoro = Kokoro('kokoro-v0_19.onnx', 'voices.json')
 
-
-def main(file_path, lang, voice):
+def main(kokoro, file_path, lang, voice):
     filename = Path(file_path).name
     with warnings.catch_warnings():
         book = epub.read_epub(file_path)
@@ -133,6 +131,7 @@ if __name__ == '__main__':
         print('wget https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/kokoro-v0_19.onnx')
         print('wget https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/voices.json')
         sys.exit(1)
+    kokoro = Kokoro('kokoro-v0_19.onnx', 'voices.json')
     voices = list(kokoro.get_voices())
     voices_str = ', '.join(voices)
     epilog = 'example:\n' + \
@@ -146,4 +145,4 @@ if __name__ == '__main__':
         parser.print_help(sys.stderr)
         sys.exit(1)
     args = parser.parse_args()
-    main(args.epub_file_path, args.lang, args.voice)
+    main(kokoro, args.epub_file_path, args.lang, args.voice)
