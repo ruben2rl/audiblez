@@ -125,7 +125,7 @@ def create_m4b(chaptfer_files, filename):
         print('Feel free to delete the intermediary .wav chapter files, the .m4b is all you need.')
 
 
-if __name__ == '__main__':
+def cli_main():
     if not Path('kokoro-v0_19.onnx').exists() or not Path('voices.json').exists():
         print('Error: kokoro-v0_19.onnx and voices.json must be in the current directory. Please download them with:')
         print('wget https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/kokoro-v0_19.onnx')
@@ -146,3 +146,7 @@ if __name__ == '__main__':
         sys.exit(1)
     args = parser.parse_args()
     main(kokoro, args.epub_file_path, args.lang, args.voice)
+
+
+if __name__ == '__main__':
+    cli_main()
