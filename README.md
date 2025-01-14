@@ -47,3 +47,8 @@ Use `-l` option to specify the language, available language codes are:
 Use `-v` option to specify the voice:
 available voices are `af`, `af_bella`, `af_nicole`, `af_sarah`, `af_sky`, `am_adam`, `am_michael`, `bf_emma`, `bf_isabella`, `bm_george`, `bm_lewis`.
 You can try them here: [https://huggingface.co/spaces/hexgrad/Kokoro-TTS](https://huggingface.co/spaces/hexgrad/Kokoro-TTS)
+
+## Author
+by [Claudio Santini](https://claudio.uk) in 2025, distributed under MIT licence.
+
+For more details: [Convert E-books into audiobooks with Kokoro](https://claudio.uk/posts/epub-to-audiobook.html)
