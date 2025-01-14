@@ -39,14 +39,11 @@ and at the end it will produce a `book.m4b` file with the whole book you can lis
 It will only produce the `.m4b` file if you have `ffmpeg` installed on your machine.
 
 ## Supported Languages
-- 🇺🇸 en-US
-- 🇬🇧 en-GB
-- 🇫🇷 fr-FR
-- 🇯🇵 ja-JP
-- 🇰🇷 ko-KR
-- 🇨🇳 zh-CN
+Use `-l` option to specify the language, available language codes are:
+🇺🇸 `en-us`, 🇬🇧 `en-gb`, 🇫🇷 `fr-fr`, 🇯🇵 `ja`, 🇰🇷 `kr` and 🇨🇳 `cmn`.
+
 
 ## Supported Voices
-Available voices are `af`, `af_bella`, `af_nicole`, `af_sarah`, `af_sky`, `am_adam`, `am_michael`, `bf_emma`, `bf_isabella`, `bm_george`, `bm_lewis`.
+Use `-v` option to specify the voice:
+available voices are `af`, `af_bella`, `af_nicole`, `af_sarah`, `af_sky`, `am_adam`, `am_michael`, `bf_emma`, `bf_isabella`, `bm_george`, `bm_lewis`.
 You can try them here: [https://huggingface.co/spaces/hexgrad/Kokoro-TTS](https://huggingface.co/spaces/hexgrad/Kokoro-TTS)
-
