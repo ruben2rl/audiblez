@@ -31,7 +31,7 @@ def main(file_path, lang, voice):
     intro = f'{title} by {creator}'
     print(intro)
     chapters = find_chapters(book)
-    print([c.get_name() for c in chapters])
+    print('Found chapters:', [c.get_name() for c in chapters])
     texts = extract_texts(chapters)
     has_ffmpeg = shutil.which('ffmpeg') is not None
     if not has_ffmpeg:
@@ -48,6 +48,7 @@ def main(file_path, lang, voice):
         chapter_mp3_files.append(chapter_filename)
         if Path(chapter_filename).exists():
             print(f'File for chapter {i} already exists. Skipping')
+            remaining_chars = sum([len(t) for t in texts[i - 1:]])
             i += 1
             continue
         print(f'Reading chapter {i} ({len(text):,} characters)...')
@@ -59,16 +60,14 @@ def main(file_path, lang, voice):
         end_time = time.time()
         delta_seconds = end_time - start_time
         chars_per_sec = len(text) / delta_seconds
-        print('Chapter written to', chapter_filename)
-        print(f'Chapter {i} read in {delta_seconds:.2f} seconds ({chars_per_sec:.0f} characters per second)')
         remaining_chars = sum([len(t) for t in texts[i - 1:]])
         remaining_time = remaining_chars / chars_per_sec
         print(f'Estimated time remaining: {strfdelta(remaining_time)}')
+        print('Chapter written to', chapter_filename)
+        print(f'Chapter {i} read in {delta_seconds:.2f} seconds ({chars_per_sec:.0f} characters per second)')
         progress = int((total_chars - remaining_chars) / total_chars * 100)
-        print(f'Progress: {progress}%')
-        print()
+        print('Progress:', f'{progress}%')
         i += 1
-
     if has_ffmpeg:
         create_m4b(chapter_mp3_files, filename)
 

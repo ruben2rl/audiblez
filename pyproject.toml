@@ -74,7 +74,7 @@ dependencies = [
     "typing-extensions (==4.12.2)",
     "uritemplate (==4.1.1)",
     "urllib3 (==2.3.0)",
-    "pydub (>=0.25.1,<0.26.0)"
+    "pydub (>=0.25.1,<0.26.0)",
 ]
 
 
