@@ -16,7 +16,8 @@ at a rate of about 80 characters per second.
 
 ## How to install and run
 
-If you have python3 on your computer, you can install it with pip. 
+If you have Python 3.11 or Python 3.12 on your computer, you can install it with pip.
+Be aware that it won't work with Python 3.10 or lower.
 Then you also need to download the onnx and voices files in the same folder, which are about ~360MB:
 
 ```bash
