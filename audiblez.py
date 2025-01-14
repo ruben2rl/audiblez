@@ -45,7 +45,6 @@ def main(kokoro, file_path, lang, voice):
         chapter_mp3_files.append(chapter_filename)
         if Path(chapter_filename).exists():
             print(f'File for chapter {i} already exists. Skipping')
-            remaining_chars = sum([len(t) for t in texts[i - 1:]])
             i += 1
             continue
         print(f'Reading chapter {i} ({len(text):,} characters)...')
