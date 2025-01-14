@@ -51,4 +51,4 @@ You can try them here: [https://huggingface.co/spaces/hexgrad/Kokoro-TTS](https:
 ## Author
 by [Claudio Santini](https://claudio.uk) in 2025, distributed under MIT licence.
 
-For more details: [Convert E-books into audiobooks with Kokoro](https://claudio.uk/posts/epub-to-audiobook.html)
+Related article: [Convert E-books into audiobooks with Kokoro](https://claudio.uk/posts/epub-to-audiobook.html)
