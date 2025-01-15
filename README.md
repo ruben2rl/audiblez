@@ -1,5 +1,7 @@
 # Audiblez: Generate  audiobooks from e-books
 [![Installing via pip and running](https://github.com/santinic/audiblez/actions/workflows/pip-install.yaml/badge.svg)](https://github.com/santinic/audiblez/actions/workflows/pip-install.yaml)
+![PyPI - Python Version](https://img.shields.io/pypi/pyversions/audiblez)
+![PyPI - Version](https://img.shields.io/pypi/v/audiblez)
 
 Audiblez generates `.m4b` audiobooks from regular `.epub` e-books, 
 using Kokoro's high-quality speech synthesis.
