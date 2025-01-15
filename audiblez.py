@@ -42,6 +42,8 @@ def main(kokoro, file_path, lang, voice):
     i = 1
     chapter_mp3_files = []
     for text in texts:
+        if len(text) == 0:
+            continue
         chapter_filename = filename.replace('.epub', f'_chapter_{i}.wav')
         chapter_mp3_files.append(chapter_filename)
         if Path(chapter_filename).exists():
