@@ -21,7 +21,7 @@ from pydub import AudioSegment
 from pick import pick
 
 
-def main(kokoro, file_path, lang, voice, pick_manually):
+def main(kokoro, file_path, lang, voice, pick_manually, speed):
     filename = Path(file_path).name
     with warnings.catch_warnings():
         book = epub.read_epub(file_path)
@@ -59,7 +59,7 @@ def main(kokoro, file_path, lang, voice, pick_manually):
         if i == 1:
             text = intro + '.\n\n' + text
         start_time = time.time()
-        samples, sample_rate = kokoro.create(text, voice=voice, speed=1.0, lang=lang)
+        samples, sample_rate = kokoro.create(text, voice=voice, speed=speed, lang=lang)
         sf.write(f'{chapter_filename}', samples, sample_rate)
         end_time = time.time()
         delta_seconds = end_time - start_time
@@ -174,11 +174,12 @@ def cli_main():
     parser.add_argument('-v', '--voice', default=default_voice, help=f'Choose narrating voice: {voices_str}')
     parser.add_argument('-p', '--pick', default=False, help=f'Manually select which chapters to read in the audiobook',
                         action='store_true')
+    parser.add_argument('-s', '--speed', default=1.0, help=f'Set speed from 0.5 to 2.0',type=float)
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
         sys.exit(1)
     args = parser.parse_args()
-    main(kokoro, args.epub_file_path, args.lang, args.voice, args.pick)
+    main(kokoro, args.epub_file_path, args.lang, args.voice, args.pick, args.speed)
 
 
 if __name__ == '__main__':
