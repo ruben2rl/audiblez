@@ -18,9 +18,10 @@ from bs4 import BeautifulSoup
 from kokoro_onnx import Kokoro
 from ebooklib import epub
 from pydub import AudioSegment
+from pick import pick
 
 
-def main(kokoro, file_path, lang, voice):
+def main(kokoro, file_path, lang, voice, pick_manually):
     filename = Path(file_path).name
     with warnings.catch_warnings():
         book = epub.read_epub(file_path)
@@ -28,8 +29,12 @@ def main(kokoro, file_path, lang, voice):
     creator = book.get_metadata('DC', 'creator')[0][0]
     intro = f'{title} by {creator}'
     print(intro)
-    chapters = find_chapters(book)
-    print('Found chapters:', [c.get_name() for c in chapters])
+    print('Found Chapters:', [c.get_name() for c in book.get_items() if c.get_type() == ebooklib.ITEM_DOCUMENT])
+    if pick_manually:
+        chapters = pick_chapters(book)
+    else:
+        chapters = find_chapters(book)
+    print('Selected chapters:', [c.get_name() for c in chapters])
     texts = extract_texts(chapters)
     has_ffmpeg = shutil.which('ffmpeg') is not None
     if not has_ffmpeg:
@@ -98,7 +103,7 @@ def is_chapter(c):
         return True
 
 
-def find_chapters(book, verbose=True):
+def find_chapters(book, verbose=False):
     chapters = [c for c in book.get_items() if c.get_type() == ebooklib.ITEM_DOCUMENT and is_chapter(c)]
     if verbose:
         for item in book.get_items():
@@ -109,6 +114,15 @@ def find_chapters(book, verbose=True):
         print('Not easy to find the chapters, defaulting to all available documents.')
         chapters = [c for c in book.get_items() if c.get_type() == ebooklib.ITEM_DOCUMENT]
     return chapters
+
+
+def pick_chapters(book):
+    all_chapters_names = [c.get_name() for c in book.get_items()]
+    title = 'Select which chapters to read in the audiobook'
+    selected_chapters_names = pick(all_chapters_names, title, multiselect=True, min_selection_count=1)
+    selected_chapters_names = [c[0] for c in selected_chapters_names]
+    selected_chapters = [c for c in book.get_items() if c.get_name() in selected_chapters_names]
+    return selected_chapters
 
 
 def strfdelta(tdelta, fmt='{D:02}d {H:02}h {M:02}m {S:02}s'):
@@ -158,11 +172,13 @@ def cli_main():
     parser.add_argument('epub_file_path', help='Path to the epub file')
     parser.add_argument('-l', '--lang', default='en-gb', help='Language code: en-gb, en-us, fr-fr, ja, ko, cmn')
     parser.add_argument('-v', '--voice', default=default_voice, help=f'Choose narrating voice: {voices_str}')
+    parser.add_argument('-p', '--pick', default=False, help=f'Manually select which chapters to read in the audiobook',
+                        action='store_true')
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
         sys.exit(1)
     args = parser.parse_args()
-    main(kokoro, args.epub_file_path, args.lang, args.voice)
+    main(kokoro, args.epub_file_path, args.lang, args.voice, args.pick)
 
 
 if __name__ == '__main__':
