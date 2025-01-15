@@ -11,6 +11,7 @@ import subprocess
 import soundfile as sf
 import ebooklib
 import warnings
+import re
 from pathlib import Path
 from string import Formatter
 from bs4 import BeautifulSoup
@@ -83,13 +84,25 @@ def extract_texts(chapters):
     return texts
 
 
-def find_chapters(book, verbose=False):
-    is_chapter = lambda c: 'chapter' in c.get_name().lower() or 'part' in c.get_name().lower()
+def is_chapter(c):
+    name = c.get_name().lower()
+    part = r"part\d{1,3}"
+    if re.search(part, name):
+        return True
+    ch = r"ch\d{1,3}"
+    if re.search(ch, name):
+        return True
+    if 'chapter' in name:
+        return True
+
+
+def find_chapters(book, verbose=True):
     chapters = [c for c in book.get_items() if c.get_type() == ebooklib.ITEM_DOCUMENT and is_chapter(c)]
     if verbose:
         for item in book.get_items():
             if item.get_type() == ebooklib.ITEM_DOCUMENT:
-                print((item.get_name(), len(item.get_body_content()), 'YES' if item in chapters else '-'))
+                # print(f"'{item.get_name()}'" + ', #' + str(len(item.get_body_content())))
+                print(f'{item.get_name()}'.ljust(60), str(len(item.get_body_content())).ljust(15), 'X' if item in chapters else '-')
     return chapters
 
 
