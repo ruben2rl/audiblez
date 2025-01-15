@@ -101,8 +101,11 @@ def find_chapters(book, verbose=True):
     if verbose:
         for item in book.get_items():
             if item.get_type() == ebooklib.ITEM_DOCUMENT:
-                # print(f"'{item.get_name()}'" + ', #' + str(len(item.get_body_content())))
-                print(f'{item.get_name()}'.ljust(60), str(len(item.get_body_content())).ljust(15), 'X' if item in chapters else '-')
+                print(f"'{item.get_name()}'" + ', #' + str(len(item.get_body_content())))
+                # print(f'{item.get_name()}'.ljust(60), str(len(item.get_body_content())).ljust(15), 'X' if item in chapters else '-')
+    if len(chapters) == 0:
+        print('Not easy to find the chapters, defaulting to all available documents.')
+        chapters = [c for c in book.get_items() if c.get_type() == ebooklib.ITEM_DOCUMENT]
     return chapters
 
 
