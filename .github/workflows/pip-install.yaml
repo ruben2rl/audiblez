@@ -19,14 +19,14 @@ jobs:
         run: python -m audiblez --help
       - name: check it runs as script
         run: audiblez --help
-#      - name: install ffmpeg
-#        run: sudo apt-get install ffmpeg
-#      - name: download test epub
-#        run: wget https://github.com/daisy/epub-accessibility-tests/releases/download/fundamental-2.0/Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.epub
-#      - name: create audiobook
-#        run: audiblez Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.epub
-#      - name: check m4b output file
-#        run: ls -lah Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.m4b
+      - name: install ffmpeg
+        run: sudo apt-get install ffmpeg
+      - name: download test epub
+        run: wget https://github.com/daisy/epub-accessibility-tests/releases/download/fundamental-2.0/Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.epub
+      - name: create audiobook
+        run: audiblez Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.epub
+      - name: check m4b output file
+        run: ls -lah Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.m4b
   install-and-run-on-python-3-12:
     runs-on: ubuntu-latest
     steps:
