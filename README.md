@@ -8,10 +8,6 @@ using Kokoro's high-quality speech synthesis.
 It's released under Apache licence and it was trained on < 100 hours of audio.
 It currently supports American, British English, French, Korean, Japanese and Mandarin, and a bunch of very good voices.
 
-An example of the quality:
-
-<audio controls=""><source type="audio/wav" src="https://huggingface.co/hexgrad/Kokoro-82M/resolve/main/demo/HEARME.wav"></audio>
-
 On my M2 MacBook Pro, **it takes about 2 hours to convert to mp3 the Selfish Gene by Richard Dawkins**, which is about 100,000 words (or 600,000 characters),
 at a rate of about 80 characters per second.
 
