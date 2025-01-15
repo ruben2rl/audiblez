@@ -73,7 +73,7 @@ def main(kokoro, file_path, lang, voice, pick_manually):
         print('Progress:', f'{progress}%')
         i += 1
     if has_ffmpeg:
-        create_m4b(chapter_mp3_files, filename)
+        create_m4b(chapter_mp3_files, filename, title, creator)
 
 
 def extract_texts(chapters):
@@ -138,18 +138,23 @@ def strfdelta(tdelta, fmt='{D:02}d {H:02}h {M:02}m {S:02}s'):
     return f.format(fmt, **values)
 
 
-def create_m4b(chaptfer_files, filename):
+def create_m4b(chapter_files, filename, title, author):
     tmp_filename = filename.replace('.epub', '.tmp.m4a')
     if not Path(tmp_filename).exists():
         combined_audio = AudioSegment.empty()
-        for wav_file in chaptfer_files:
+        for wav_file in chapter_files:
             audio = AudioSegment.from_wav(wav_file)
             combined_audio += audio
         print('Converting to Mp4...')
         combined_audio.export(tmp_filename, format="mp4", codec="aac", bitrate="64k")
     final_filename = filename.replace('.epub', '.m4b')
     print('Creating M4B file...')
-    proc = subprocess.run(['ffmpeg', '-i', f'{tmp_filename}', '-c', 'copy', '-f', 'mp4', f'{final_filename}'])
+    proc = subprocess.run([
+        'ffmpeg', '-i', f'{tmp_filename}', '-c', 'copy', '-f', 'mp4',
+        '-metadata', f'title={title}',
+        '-metadata', f'author={author}',
+        f'{final_filename}'
+    ])
     Path(tmp_filename).unlink()
     if proc.returncode == 0:
         print(f'{final_filename} created. Enjoy your audiobook.')
