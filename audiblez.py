@@ -15,11 +15,13 @@ import re
 from pathlib import Path
 from string import Formatter
 from bs4 import BeautifulSoup
+from kokoro_onnx import config
 from kokoro_onnx import Kokoro
 from ebooklib import epub
 from pydub import AudioSegment
 from pick import pick
 
+config.MAX_PHONEME_LENGTH = 128
 
 def main(kokoro, file_path, lang, voice, pick_manually):
     filename = Path(file_path).name
@@ -157,12 +159,15 @@ def create_m4b(chaptfer_files, filename):
 
 
 def cli_main():
-    if not Path('kokoro-v0_19.onnx').exists() or not Path('voices.json').exists():
+    MODEL_NAME = 'kokoro-v0_19.onnx'
+    CUDA_PROVIDER = "CUDAExecutionProvider"
+    VOICES = 'voices.json'
+    if not Path(MODEL_NAME).exists() or not Path(VOICES).exists():
         print('Error: kokoro-v0_19.onnx and voices.json must be in the current directory. Please download them with:')
         print('wget https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/kokoro-v0_19.onnx')
         print('wget https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/voices.json')
         sys.exit(1)
-    kokoro = Kokoro('kokoro-v0_19.onnx', 'voices.json')
+    kokoro = Kokoro(MODEL_NAME, VOICES)
     voices = list(kokoro.get_voices())
     voices_str = ', '.join(voices)
     epilog = 'example:\n' + \
@@ -172,12 +177,17 @@ def cli_main():
     parser.add_argument('epub_file_path', help='Path to the epub file')
     parser.add_argument('-l', '--lang', default='en-gb', help='Language code: en-gb, en-us, fr-fr, ja, ko, cmn')
     parser.add_argument('-v', '--voice', default=default_voice, help=f'Choose narrating voice: {voices_str}')
-    parser.add_argument('-p', '--pick', default=False, help=f'Manually select which chapters to read in the audiobook',
+    parser.add_argument('-c', '--cuda', default=False, help='Set to true to use cuda', action='store_true')
+    parser.add_argument('-p', '--pick', default=False, help='Manually select which chapters to read in the audiobook',
                         action='store_true')
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
         sys.exit(1)
     args = parser.parse_args()
+    if args.cuda:
+        from onnxruntime import InferenceSession
+        session = InferenceSession(MODEL_NAME, providers=[CUDA_PROVIDER])
+        kokoro = Kokoro.from_session(session, VOICES) 
     main(kokoro, args.epub_file_path, args.lang, args.voice, args.pick)
 
 
