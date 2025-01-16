@@ -21,7 +21,7 @@ from pydub import AudioSegment
 from pick import pick
 
 
-def main(kokoro, file_path, lang, voice, pick_manually, use_gpu):
+def main(kokoro, file_path, lang, voice, pick_manually, speed):
     filename = Path(file_path).name
     with warnings.catch_warnings():
         book = epub.read_epub(file_path)
@@ -63,7 +63,7 @@ def main(kokoro, file_path, lang, voice, pick_manually, use_gpu):
         if i == 1:
             text = intro + '.\n\n' + text
         start_time = time.time()
-        samples, sample_rate = kokoro.create(text, voice=voice, speed=1.0, lang=lang)
+        samples, sample_rate = kokoro.create(text, voice=voice, speed=speed, lang=lang)
         sf.write(f'{chapter_filename}', samples, sample_rate)
         end_time = time.time()
         delta_seconds = end_time - start_time
@@ -77,7 +77,7 @@ def main(kokoro, file_path, lang, voice, pick_manually, use_gpu):
         print('Progress:', f'{progress}%')
         i += 1
     if has_ffmpeg:
-        create_m4b(chapter_mp3_files, filename)
+        create_m4b(chapter_mp3_files, filename, title, creator)
 
 
 def extract_texts(chapters):
@@ -142,18 +142,23 @@ def strfdelta(tdelta, fmt='{D:02}d {H:02}h {M:02}m {S:02}s'):
     return f.format(fmt, **values)
 
 
-def create_m4b(chaptfer_files, filename):
+def create_m4b(chapter_files, filename, title, author):
     tmp_filename = filename.replace('.epub', '.tmp.m4a')
     if not Path(tmp_filename).exists():
         combined_audio = AudioSegment.empty()
-        for wav_file in chaptfer_files:
+        for wav_file in chapter_files:
             audio = AudioSegment.from_wav(wav_file)
             combined_audio += audio
         print('Converting to Mp4...')
         combined_audio.export(tmp_filename, format="mp4", codec="aac", bitrate="64k")
     final_filename = filename.replace('.epub', '.m4b')
     print('Creating M4B file...')
-    proc = subprocess.run(['ffmpeg', '-i', f'{tmp_filename}', '-c', 'copy', '-f', 'mp4', f'{final_filename}'])
+    proc = subprocess.run([
+        'ffmpeg', '-i', f'{tmp_filename}', '-c', 'copy', '-f', 'mp4',
+        '-metadata', f'title={title}',
+        '-metadata', f'author={author}',
+        f'{final_filename}'
+    ])
     Path(tmp_filename).unlink()
     if proc.returncode == 0:
         print(f'{final_filename} created. Enjoy your audiobook.')
@@ -178,12 +183,12 @@ def cli_main():
     parser.add_argument('-v', '--voice', default=default_voice, help=f'Choose narrating voice: {voices_str}')
     parser.add_argument('-p', '--pick', default=False, help=f'Manually select which chapters to read in the audiobook',
                         action='store_true')
-    parser.add_argument('-g', '--gpu', default=False, help=f'Use GPU for inference', action='store_true')
+    parser.add_argument('-s', '--speed', default=1.0, help=f'Set speed from 0.5 to 2.0', type=float)
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
         sys.exit(1)
     args = parser.parse_args()
-    main(kokoro, args.epub_file_path, args.lang, args.voice, args.pick, args.gpu)
+    main(kokoro, args.epub_file_path, args.lang, args.voice, args.pick, args.speed)
 
 
 if __name__ == '__main__':
