@@ -100,9 +100,12 @@ def is_chapter(c):
     part = r"part\d{1,3}"
     if re.search(part, name):
         return True
-    # ch = r"ch\d{1,3}"
-    # if re.search(ch, name):
-    #     return True
+    ch = r"ch\d{1,3}"
+    if re.search(ch, name):
+        return True
+    chap = r"chap\d{1,3}"
+    if re.search(chap, name):
+        return True
     if 'chapter' in name:
         return True
 
