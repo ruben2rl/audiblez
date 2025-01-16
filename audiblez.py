@@ -21,7 +21,7 @@ from pydub import AudioSegment
 from pick import pick
 
 
-def main(kokoro, file_path, lang, voice, pick_manually):
+def main(kokoro, file_path, lang, voice, pick_manually, use_gpu):
     filename = Path(file_path).name
     with warnings.catch_warnings():
         book = epub.read_epub(file_path)
@@ -53,6 +53,10 @@ def main(kokoro, file_path, lang, voice, pick_manually):
         chapter_mp3_files.append(chapter_filename)
         if Path(chapter_filename).exists():
             print(f'File for chapter {i} already exists. Skipping')
+            i += 1
+            continue
+        if len(text.strip()) < 10:
+            print(f'Skipping empty chapter {i}')
             i += 1
             continue
         print(f'Reading chapter {i} ({len(text):,} characters)...')
@@ -96,9 +100,9 @@ def is_chapter(c):
     part = r"part\d{1,3}"
     if re.search(part, name):
         return True
-    ch = r"ch\d{1,3}"
-    if re.search(ch, name):
-        return True
+    # ch = r"ch\d{1,3}"
+    # if re.search(ch, name):
+    #     return True
     if 'chapter' in name:
         return True
 
@@ -174,11 +178,12 @@ def cli_main():
     parser.add_argument('-v', '--voice', default=default_voice, help=f'Choose narrating voice: {voices_str}')
     parser.add_argument('-p', '--pick', default=False, help=f'Manually select which chapters to read in the audiobook',
                         action='store_true')
+    parser.add_argument('-g', '--gpu', default=False, help=f'Use GPU for inference', action='store_true')
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
         sys.exit(1)
     args = parser.parse_args()
-    main(kokoro, args.epub_file_path, args.lang, args.voice, args.pick)
+    main(kokoro, args.epub_file_path, args.lang, args.voice, args.pick, args.gpu)
 
 
 if __name__ == '__main__':
