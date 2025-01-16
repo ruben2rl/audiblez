@@ -184,7 +184,7 @@ def cli_main():
     parser.add_argument('epub_file_path', help='Path to the epub file')
     parser.add_argument('-l', '--lang', default='en-gb', help='Language code: en-gb, en-us, fr-fr, ja, ko, cmn')
     parser.add_argument('-v', '--voice', default=default_voice, help=f'Choose narrating voice: {voices_str}')
-    parser.add_argument('-p', '--pick', default=False, help=f'Manually select which chapters to read in the audiobook',
+    parser.add_argument('-p', '--pick', default=False, help=f'Interactively select which chapters to read in the audiobook',
                         action='store_true')
     parser.add_argument('-s', '--speed', default=1.0, help=f'Set speed from 0.5 to 2.0', type=float)
     if len(sys.argv) == 1:
