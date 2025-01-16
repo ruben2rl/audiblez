@@ -46,6 +46,7 @@ def main(kokoro, file_path, lang, voice, pick_manually):
 
     i = 1
     chapter_mp3_files = []
+    durations = {}
     for text in texts:
         if len(text) == 0:
             continue
@@ -61,6 +62,7 @@ def main(kokoro, file_path, lang, voice, pick_manually):
         start_time = time.time()
         samples, sample_rate = kokoro.create(text, voice=voice, speed=1.0, lang=lang)
         sf.write(f'{chapter_filename}', samples, sample_rate)
+        durations[chapter_filename] = len(samples)/sample_rate
         end_time = time.time()
         delta_seconds = end_time - start_time
         chars_per_sec = len(text) / delta_seconds
@@ -73,6 +75,7 @@ def main(kokoro, file_path, lang, voice, pick_manually):
         print('Progress:', f'{progress}%')
         i += 1
     if has_ffmpeg:
+        create_index_file(title, creator, chapter_mp3_files, durations)
         create_m4b(chapter_mp3_files, filename)
 
 
@@ -138,22 +141,40 @@ def strfdelta(tdelta, fmt='{D:02}d {H:02}h {M:02}m {S:02}s'):
     return f.format(fmt, **values)
 
 
-def create_m4b(chaptfer_files, filename):
+def create_m4b(chapter_files, filename):
     tmp_filename = filename.replace('.epub', '.tmp.m4a')
     if not Path(tmp_filename).exists():
         combined_audio = AudioSegment.empty()
-        for wav_file in chaptfer_files:
+        for wav_file in chapter_files:
             audio = AudioSegment.from_wav(wav_file)
             combined_audio += audio
         print('Converting to Mp4...')
         combined_audio.export(tmp_filename, format="mp4", codec="aac", bitrate="64k")
     final_filename = filename.replace('.epub', '.m4b')
     print('Creating M4B file...')
-    proc = subprocess.run(['ffmpeg', '-i', f'{tmp_filename}', '-c', 'copy', '-f', 'mp4', f'{final_filename}'])
+    proc = subprocess.run(['ffmpeg', '-i', f'{tmp_filename}', '-i', 'chapters.txt', '-map', '0', '-map_metadata', '1', '-c', 'copy', '-f', 'mp4', f'{final_filename}'])
     Path(tmp_filename).unlink()
     if proc.returncode == 0:
         print(f'{final_filename} created. Enjoy your audiobook.')
         print('Feel free to delete the intermediary .wav chapter files, the .m4b is all you need.')
+
+def probe_duration(file_name):
+    args = ['ffprobe', '-i', file_name, '-show_entries', 'format=duration', '-v', 'quiet', '-of', 'default=noprint_wrappers=1:nokey=1']
+    proc = subprocess.run(args, capture_output=True, text=True, check=True)
+    return float(proc.stdout.strip())
+
+def create_index_file(title, creator, chapter_mp3_files, durations):
+    with open("chapters.txt", "w") as f:
+        f.write(f";FFMETADATA1\ntitle={title}\nartist={creator}\n\n")
+        start = 0
+        i = 0
+        for c in chapter_mp3_files:
+            if c not in durations:
+                durations[c] = probe_duration(c)
+            end = start + (int)(durations[c] * 1000)
+            f.write(f"[CHAPTER]\nTIMEBASE=1/1000\nSTART={start}\nEND={end}\ntitle=Chapter {i}\n\n")
+            i += 1
+            start = end
 
 
 def cli_main():
@@ -172,7 +193,7 @@ def cli_main():
     parser.add_argument('epub_file_path', help='Path to the epub file')
     parser.add_argument('-l', '--lang', default='en-gb', help='Language code: en-gb, en-us, fr-fr, ja, ko, cmn')
     parser.add_argument('-v', '--voice', default=default_voice, help=f'Choose narrating voice: {voices_str}')
-    parser.add_argument('-p', '--pick', default=False, help=f'Manually select which chapters to read in the audiobook',
+    parser.add_argument('-p', '--pick', default=False, help='Manually select which chapters to read in the audiobook',
                         action='store_true')
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
