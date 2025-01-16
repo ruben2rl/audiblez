@@ -124,7 +124,7 @@ def find_chapters(book, verbose=False):
 
 
 def pick_chapters(book):
-    all_chapters_names = [c.get_name() for c in book.get_items()]
+    all_chapters_names = [c.get_name() for c in book.get_items() if c.get_type() == ebooklib.ITEM_DOCUMENT]
     title = 'Select which chapters to read in the audiobook'
     selected_chapters_names = pick(all_chapters_names, title, multiselect=True, min_selection_count=1)
     selected_chapters_names = [c[0] for c in selected_chapters_names]
