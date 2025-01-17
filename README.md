@@ -36,9 +36,25 @@ and at the end it will produce a `book.m4b` file with the whole book you can lis
 audiobook player.
 It will only produce the `.m4b` file if you have `ffmpeg` installed on your machine.
 
-### Using the `--providers` option for ONNX
+## Supported Languages
+Use `-l` option to specify the language, available language codes are:
+🇺🇸 `en-us`, 🇬🇧 `en-gb`, 🇫🇷 `fr-fr`, 🇯🇵 `ja`, 🇰🇷 `kr` and 🇨🇳 `cmn`.
 
-If you want to use a GPU for faster performance, install the GPU-enabled ONNX Runtime and specify a runtime provider with the `--providers` flag. By default, the CPU-enabled ONNX Runtime is installed. The GPU runtime must be installed manually.
+## Speed
+By default the audio is generated using a normal speed, but you can make it up to twice slower or faster by specifying a speed argument between 0.5 to 2.0:
+
+```bash
+audiblez book.epub -l en-gb -v af_sky -s 1.5
+```
+
+## Supported Voices
+Use `-v` option to specify the voice:
+available voices are `af`, `af_bella`, `af_nicole`, `af_sarah`, `af_sky`, `am_adam`, `am_michael`, `bf_emma`, `bf_isabella`, `bm_george`, `bm_lewis`.
+You can try them here: [https://huggingface.co/spaces/hexgrad/Kokoro-TTS](https://huggingface.co/spaces/hexgrad/Kokoro-TTS)
+
+
+## How to run on GPU
+By default audiblez runs on CPU. If you want to use a GPU for faster performance, install the GPU-enabled ONNX Runtime and specify a runtime provider with the `--providers` flag. By default, the CPU-enabled ONNX Runtime is installed. The GPU runtime must be installed manually.
 
 ```bash
 pip install onnxruntime-gpu
@@ -69,22 +85,6 @@ You can specify a provider hierarchy by providing multiple hierarchies separated
 ```bash
 audiblez book.epub -l en-gb -v af_sky --providers CUDAExecutionProvider CPUExecutionProvider
 ```
-
-## Supported Languages
-Use `-l` option to specify the language, available language codes are:
-🇺🇸 `en-us`, 🇬🇧 `en-gb`, 🇫🇷 `fr-fr`, 🇯🇵 `ja`, 🇰🇷 `kr` and 🇨🇳 `cmn`.
-
-## Speed
-By default the audio is generated using a normal speed, but you can make it up to twice slower or faster by specifying a speed argument between 0.5 to 2.0:
-
-```bash
-audiblez book.epub -l en-gb -v af_sky -s 1.5
-```
-
-## Supported Voices
-Use `-v` option to specify the voice:
-available voices are `af`, `af_bella`, `af_nicole`, `af_sarah`, `af_sky`, `am_adam`, `am_michael`, `bf_emma`, `bf_isabella`, `bm_george`, `bm_lewis`.
-You can try them here: [https://huggingface.co/spaces/hexgrad/Kokoro-TTS](https://huggingface.co/spaces/hexgrad/Kokoro-TTS)
 
 ## Author
 by [Claudio Santini](https://claudio.uk) in 2025, distributed under MIT licence.
