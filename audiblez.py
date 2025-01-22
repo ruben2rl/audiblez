@@ -20,6 +20,7 @@ from ebooklib import epub
 from pydub import AudioSegment
 from pick import pick
 import onnxruntime as ort
+from tempfile import NamedTemporaryFile
 
 
 def main(kokoro, file_path, lang, voice, pick_manually, speed, providers):
@@ -39,6 +40,12 @@ def main(kokoro, file_path, lang, voice, pick_manually, speed, providers):
         book = epub.read_epub(file_path)
     title = book.get_metadata('DC', 'title')[0][0]
     creator = book.get_metadata('DC', 'creator')[0][0]
+
+    cover_maybe = [c for c in book.get_items() if c.get_type() == ebooklib.ITEM_COVER]
+    cover_image = cover_maybe[0].get_content() if cover_maybe else b""
+    if cover_maybe:
+        print(f'Found cover image {cover_maybe[0].file_name} in {cover_maybe[0].media_type} format')
+
     intro = f'{title} by {creator}'
     print(intro)
     print('Found Chapters:', [c.get_name() for c in book.get_items() if c.get_type() == ebooklib.ITEM_DOCUMENT])
@@ -48,9 +55,11 @@ def main(kokoro, file_path, lang, voice, pick_manually, speed, providers):
         chapters = find_chapters(book)
     print('Selected chapters:', [c.get_name() for c in chapters])
     texts = extract_texts(chapters)
+
     has_ffmpeg = shutil.which('ffmpeg') is not None
     if not has_ffmpeg:
         print('\033[91m' + 'ffmpeg not found. Please install ffmpeg to create mp3 and m4b audiobook files.' + '\033[0m')
+
     total_chars = sum([len(t) for t in texts])
     print('Started at:', time.strftime('%H:%M:%S'))
     print(f'Total characters: {total_chars:,}')
@@ -89,7 +98,7 @@ def main(kokoro, file_path, lang, voice, pick_manually, speed, providers):
         print('Progress:', f'{progress}%')
         i += 1
     if has_ffmpeg:
-        create_m4b(chapter_mp3_files, filename, title, creator)
+        create_m4b(chapter_mp3_files, filename, title, creator, cover_image)
 
 
 def extract_texts(chapters):
@@ -157,8 +166,8 @@ def strfdelta(tdelta, fmt='{D:02}d {H:02}h {M:02}m {S:02}s'):
     return f.format(fmt, **values)
 
 
-def create_m4b(chapter_files, filename, title, author):
-    tmp_filename = filename.replace('.epub', '.tmp.m4a')
+def create_m4b(chapter_files, filename, title, author, cover_image):
+    tmp_filename = filename.replace('.epub', '.tmp.mp4')
     if not Path(tmp_filename).exists():
         combined_audio = AudioSegment.empty()
         for wav_file in chapter_files:
@@ -168,10 +177,18 @@ def create_m4b(chapter_files, filename, title, author):
         combined_audio.export(tmp_filename, format="mp4", codec="aac", bitrate="64k")
     final_filename = filename.replace('.epub', '.m4b')
     print('Creating M4B file...')
+
+    if cover_image:
+        cover_image_file = NamedTemporaryFile("wb")
+        cover_image_file.write(cover_image)
+        cover_image_args = ["-i", cover_image_file.name, "-map", "0:a",  "-map",  "1:v"]
+    else:
+        cover_image_args = []
+
     proc = subprocess.run([
-        'ffmpeg', '-i', f'{tmp_filename}', '-c', 'copy', '-f', 'mp4',
-        '-metadata', f'title={title}',
-        '-metadata', f'author={author}',
+        'ffmpeg', '-i', f'{tmp_filename}', *cover_image_args, '-c:a', 'copy', '-c:v', 'copy', '-disposition:v', 'attached_pic',
+        '-metadata:s:v', f'title={title}',
+        '-metadata', f'artist={author}',
         f'{final_filename}'
     ])
     Path(tmp_filename).unlink()
