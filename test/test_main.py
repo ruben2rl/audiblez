@@ -21,7 +21,7 @@ class MainTest(unittest.TestCase):
         self.base(file_path='../epub/poe.epub')
         self.assertTrue(Path('poe.m4b').exists())
 
-    def test_3_great_gatsby_two_chapters(self):
+    def test_3_gene(self):
         Path('gene.m4b').unlink(missing_ok=True)
         self.base(file_path='../epub/gene.epub')
         self.assertTrue(Path('gene.m4b').exists())
