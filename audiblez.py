@@ -185,7 +185,7 @@ def create_m4b(chapter_files, filename, title, author, cover_image):
     if cover_image:
         cover_image_file = NamedTemporaryFile("wb")
         cover_image_file.write(cover_image)
-        cover_image_args = ["-i", cover_image_file.name, "-map", "0:a", "-map", "1:v"]
+        cover_image_args = ["-i", cover_image_file.name, "-map", "0:a", "-map", "2:v"]
     else:
         cover_image_args = []
 
@@ -193,14 +193,12 @@ def create_m4b(chapter_files, filename, title, author, cover_image):
         'ffmpeg',
         '-i', f'{tmp_filename}',
         '-i', 'chapters.txt',
+        *cover_image_args,
         '-map', '0',
         '-map_metadata', '1',
-        # *cover_image_args,
         '-c:a', 'copy',
         '-c:v', 'copy',
         '-disposition:v', 'attached_pic',
-        # '-metadata:s:v', f'title={title}',
-        # '-metadata', f'artist={author}',
         '-c', 'copy',
         '-f', 'mp4',
         f'{final_filename}'
