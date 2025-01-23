@@ -15,12 +15,15 @@ import re
 from pathlib import Path
 from string import Formatter
 from bs4 import BeautifulSoup
+from kokoro_onnx import config
 from kokoro_onnx import Kokoro
 from ebooklib import epub
 from pydub import AudioSegment
 from pick import pick
 import onnxruntime as ort
 from tempfile import NamedTemporaryFile
+
+config.MAX_PHONEME_LENGTH = 128
 
 
 def main(kokoro, file_path, lang, voice, pick_manually, speed, providers):
@@ -34,7 +37,6 @@ def main(kokoro, file_path, lang, voice, pick_manually, speed, providers):
             sys.exit(1)
         kokoro.sess.set_providers(providers)
         print(f"Using ONNX providers: {', '.join(providers)}")
-
     filename = Path(file_path).name
     with warnings.catch_warnings():
         book = epub.read_epub(file_path)
@@ -66,6 +68,8 @@ def main(kokoro, file_path, lang, voice, pick_manually, speed, providers):
     print('Total words:', len(' '.join(texts).split()))
 
     chapter_mp3_files = []
+    durations = {}
+  
     for i, text in enumerate(texts, start=1):
         if len(text.strip()) < 10:
             print(f'Skipping empty chapter {i}')
@@ -83,6 +87,7 @@ def main(kokoro, file_path, lang, voice, pick_manually, speed, providers):
         start_time = time.time()
         samples, sample_rate = kokoro.create(text, voice=voice, speed=speed, lang=lang)
         sf.write(f'{chapter_filename}', samples, sample_rate)
+        durations[chapter_filename] = len(samples)/sample_rate
         end_time = time.time()
         delta_seconds = end_time - start_time
         chars_per_sec = len(text) / delta_seconds
@@ -96,6 +101,7 @@ def main(kokoro, file_path, lang, voice, pick_manually, speed, providers):
         print('Progress:', f'{progress}%')
 
     if has_ffmpeg:
+        create_index_file(title, creator, chapter_mp3_files, durations)
         create_m4b(chapter_mp3_files, filename, title, creator, cover_image)
 
 
@@ -179,9 +185,19 @@ def create_m4b(chapter_files, filename, title, author, cover_image):
         cover_image_args = []
 
     proc = subprocess.run([
-        'ffmpeg', '-i', f'{tmp_filename}', *cover_image_args, '-c:a', 'copy', '-c:v', 'copy', '-disposition:v', 'attached_pic',
+        'ffmpeg', 
+        '-i', f'{tmp_filename}', 
+        '-i', 'chapters.txt', 
+        #'-map', '0', 
+        #'-map_metadata', '1', 
+        *cover_image_args, 
+        '-c:a', 'copy', 
+        '-c:v', 'copy', 
+        '-disposition:v', 'attached_pic',
         '-metadata:s:v', f'title={title}',
         '-metadata', f'artist={author}',
+        '-c', 'copy', 
+        '-f', 'mp4',
         f'{final_filename}'
     ])
     Path(tmp_filename).unlink()
@@ -189,14 +205,35 @@ def create_m4b(chapter_files, filename, title, author, cover_image):
         print(f'{final_filename} created. Enjoy your audiobook.')
         print('Feel free to delete the intermediary .wav chapter files, the .m4b is all you need.')
 
+def probe_duration(file_name):
+    args = ['ffprobe', '-i', file_name, '-show_entries', 'format=duration', '-v', 'quiet', '-of', 'default=noprint_wrappers=1:nokey=1']
+    proc = subprocess.run(args, capture_output=True, text=True, check=True)
+    return float(proc.stdout.strip())
+
+def create_index_file(title, creator, chapter_mp3_files, durations):
+    with open("chapters.txt", "w") as f:
+        f.write(f";FFMETADATA1\ntitle={title}\nartist={creator}\n\n")
+        start = 0
+        i = 0
+        for c in chapter_mp3_files:
+            if c not in durations:
+                durations[c] = probe_duration(c)
+            end = start + (int)(durations[c] * 1000)
+            f.write(f"[CHAPTER]\nTIMEBASE=1/1000\nSTART={start}\nEND={end}\ntitle=Chapter {i}\n\n")
+            i += 1
+            start = end
+
 
 def cli_main():
-    if not Path('kokoro-v0_19.onnx').exists() or not Path('voices.json').exists():
+    MODEL_NAME = 'kokoro-v0_19.onnx'
+    CUDA_PROVIDER = "CUDAExecutionProvider"
+    VOICES = 'voices.json'
+    if not Path(MODEL_NAME).exists() or not Path(VOICES).exists():
         print('Error: kokoro-v0_19.onnx and voices.json must be in the current directory. Please download them with:')
         print('wget https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/kokoro-v0_19.onnx')
         print('wget https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/voices.json')
         sys.exit(1)
-    kokoro = Kokoro('kokoro-v0_19.onnx', 'voices.json')
+    kokoro = Kokoro(MODEL_NAME, VOICES)
     voices = list(kokoro.get_voices())
     voices_str = ', '.join(voices)
     epilog = 'example:\n' + \
