@@ -78,6 +78,12 @@ def main(kokoro, file_path, lang, voice, pick_manually, speed, providers):
         chapter_mp3_files.append(chapter_filename)
         if Path(chapter_filename).exists():
             print(f'File for chapter {i} already exists. Skipping')
+            i += 1
+            continue
+        if len(text.strip()) < 10:
+            print(f'Skipping empty chapter {i}')
+            i += 1
+            chapter_mp3_files.remove(chapter_filename)
             continue
 
         print(f'Reading chapter {i} ({len(text):,} characters)...')
