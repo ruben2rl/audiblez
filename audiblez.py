@@ -38,8 +38,8 @@ def main(kokoro, file_path, lang, voice, pick_manually, speed, providers):
         kokoro.sess.set_providers(providers)
         print(f"Using ONNX providers: {', '.join(providers)}")
     filename = Path(file_path).name
-    with warnings.catch_warnings():
-        book = epub.read_epub(file_path)
+    warnings.simplefilter("ignore")
+    book = epub.read_epub(file_path)
     title = book.get_metadata('DC', 'title')[0][0]
     creator = book.get_metadata('DC', 'creator')[0][0]
 
@@ -55,7 +55,7 @@ def main(kokoro, file_path, lang, voice, pick_manually, speed, providers):
         chapters = pick_chapters(book)
     else:
         chapters = find_chapters(book)
-    print('Selected chapters:', [c.get_name() for c in chapters])
+    print('Automatically selected chapters:', [c.get_name() for c in chapters])
     texts = extract_texts(chapters)
 
     has_ffmpeg = shutil.which('ffmpeg') is not None
@@ -69,31 +69,24 @@ def main(kokoro, file_path, lang, voice, pick_manually, speed, providers):
 
     chapter_mp3_files = []
     durations = {}
-  
+
     for i, text in enumerate(texts, start=1):
         if len(text.strip()) < 10:
             print(f'Skipping empty chapter {i}')
+            chapter_mp3_files.remove(chapter_filename)
             continue
         chapter_filename = filename.replace('.epub', f'_chapter_{i}.wav')
         chapter_mp3_files.append(chapter_filename)
         if Path(chapter_filename).exists():
             print(f'File for chapter {i} already exists. Skipping')
-            i += 1
             continue
-        if len(text.strip()) < 10:
-            print(f'Skipping empty chapter {i}')
-            i += 1
-            chapter_mp3_files.remove(chapter_filename)
-            continue
-
         print(f'Reading chapter {i} ({len(text):,} characters)...')
         if i == 1:
             text = intro + '.\n\n' + text
-
         start_time = time.time()
         samples, sample_rate = kokoro.create(text, voice=voice, speed=speed, lang=lang)
         sf.write(f'{chapter_filename}', samples, sample_rate)
-        durations[chapter_filename] = len(samples)/sample_rate
+        durations[chapter_filename] = len(samples) / sample_rate
         end_time = time.time()
         delta_seconds = end_time - start_time
         chars_per_sec = len(text) / delta_seconds
@@ -104,7 +97,7 @@ def main(kokoro, file_path, lang, voice, pick_manually, speed, providers):
         print('Chapter written to', chapter_filename)
         print(f'Chapter {i} read in {delta_seconds:.2f} seconds ({chars_per_sec:.0f} characters per second)')
         progress = processed_chars * 100 // total_chars
-        print('Progress:', f'{progress}%')
+        print('Progress:', f'{progress}%\n')
 
     if has_ffmpeg:
         create_index_file(title, creator, chapter_mp3_files, durations)
@@ -186,23 +179,23 @@ def create_m4b(chapter_files, filename, title, author, cover_image):
     if cover_image:
         cover_image_file = NamedTemporaryFile("wb")
         cover_image_file.write(cover_image)
-        cover_image_args = ["-i", cover_image_file.name, "-map", "0:a",  "-map",  "1:v"]
+        cover_image_args = ["-i", cover_image_file.name, "-map", "0:a", "-map", "1:v"]
     else:
         cover_image_args = []
 
     proc = subprocess.run([
-        'ffmpeg', 
-        '-i', f'{tmp_filename}', 
-        '-i', 'chapters.txt', 
-        #'-map', '0', 
-        #'-map_metadata', '1', 
-        *cover_image_args, 
-        '-c:a', 'copy', 
-        '-c:v', 'copy', 
+        'ffmpeg',
+        '-i', f'{tmp_filename}',
+        '-i', 'chapters.txt',
+        # '-map', '0',
+        # '-map_metadata', '1',
+        *cover_image_args,
+        '-c:a', 'copy',
+        '-c:v', 'copy',
         '-disposition:v', 'attached_pic',
         '-metadata:s:v', f'title={title}',
         '-metadata', f'artist={author}',
-        '-c', 'copy', 
+        '-c', 'copy',
         '-f', 'mp4',
         f'{final_filename}'
     ])
@@ -211,10 +204,12 @@ def create_m4b(chapter_files, filename, title, author, cover_image):
         print(f'{final_filename} created. Enjoy your audiobook.')
         print('Feel free to delete the intermediary .wav chapter files, the .m4b is all you need.')
 
+
 def probe_duration(file_name):
     args = ['ffprobe', '-i', file_name, '-show_entries', 'format=duration', '-v', 'quiet', '-of', 'default=noprint_wrappers=1:nokey=1']
     proc = subprocess.run(args, capture_output=True, text=True, check=True)
     return float(proc.stdout.strip())
+
 
 def create_index_file(title, creator, chapter_mp3_files, durations):
     with open("chapters.txt", "w") as f:
@@ -258,7 +253,7 @@ def cli_main():
                         action='store_true')
     parser.add_argument('-s', '--speed', default=1.0, help=f'Set speed from 0.5 to 2.0', type=float)
     parser.add_argument('--providers', nargs='+', metavar='PROVIDER', help=f"Specify ONNX providers. {providers_help}")
-    
+
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
         sys.exit(1)
