@@ -23,7 +23,18 @@ from pick import pick
 
 config.MAX_PHONEME_LENGTH = 128
 
-def main(kokoro, file_path, lang, voice, pick_manually):
+
+def main(kokoro, file_path, lang, voice, pick_manually, speed, providers):
+    # Set ONNX providers if specified
+    if providers:
+        available_providers = ort.get_available_providers()
+        invalid_providers = [p for p in providers if p not in available_providers]
+        if invalid_providers:
+            print(f"Invalid ONNX providers: {', '.join(invalid_providers)}")
+            print(f"Available providers: {', '.join(available_providers)}")
+            sys.exit(1)
+        kokoro.sess.set_providers(providers)
+        print(f"Using ONNX providers: {', '.join(providers)}")
     filename = Path(file_path).name
     with warnings.catch_warnings():
         book = epub.read_epub(file_path)
@@ -58,11 +69,15 @@ def main(kokoro, file_path, lang, voice, pick_manually):
             print(f'File for chapter {i} already exists. Skipping')
             i += 1
             continue
+        if len(text.strip()) < 10:
+            print(f'Skipping empty chapter {i}')
+            i += 1
+            continue
         print(f'Reading chapter {i} ({len(text):,} characters)...')
         if i == 1:
             text = intro + '.\n\n' + text
         start_time = time.time()
-        samples, sample_rate = kokoro.create(text, voice=voice, speed=1.0, lang=lang)
+        samples, sample_rate = kokoro.create(text, voice=voice, speed=speed, lang=lang)
         sf.write(f'{chapter_filename}', samples, sample_rate)
         durations[chapter_filename] = len(samples)/sample_rate
         end_time = time.time()
@@ -78,7 +93,7 @@ def main(kokoro, file_path, lang, voice, pick_manually):
         i += 1
     if has_ffmpeg:
         create_index_file(title, creator, chapter_mp3_files, durations)
-        create_m4b(chapter_mp3_files, filename)
+        create_m4b(chapter_mp3_files, filename, title, creator)
 
 
 def extract_texts(chapters):
@@ -104,6 +119,9 @@ def is_chapter(c):
     ch = r"ch\d{1,3}"
     if re.search(ch, name):
         return True
+    chap = r"chap\d{1,3}"
+    if re.search(chap, name):
+        return True
     if 'chapter' in name:
         return True
 
@@ -122,7 +140,7 @@ def find_chapters(book, verbose=False):
 
 
 def pick_chapters(book):
-    all_chapters_names = [c.get_name() for c in book.get_items()]
+    all_chapters_names = [c.get_name() for c in book.get_items() if c.get_type() == ebooklib.ITEM_DOCUMENT]
     title = 'Select which chapters to read in the audiobook'
     selected_chapters_names = pick(all_chapters_names, title, multiselect=True, min_selection_count=1)
     selected_chapters_names = [c[0] for c in selected_chapters_names]
@@ -143,7 +161,7 @@ def strfdelta(tdelta, fmt='{D:02}d {H:02}h {M:02}m {S:02}s'):
     return f.format(fmt, **values)
 
 
-def create_m4b(chapter_files, filename):
+def create_m4b(chapter_files, filename, title, author):
     tmp_filename = filename.replace('.epub', '.tmp.m4a')
     if not Path(tmp_filename).exists():
         combined_audio = AudioSegment.empty()
@@ -154,7 +172,18 @@ def create_m4b(chapter_files, filename):
         combined_audio.export(tmp_filename, format="mp4", codec="aac", bitrate="64k")
     final_filename = filename.replace('.epub', '.m4b')
     print('Creating M4B file...')
-    proc = subprocess.run(['ffmpeg', '-i', f'{tmp_filename}', '-i', 'chapters.txt', '-map', '0', '-map_metadata', '1', '-c', 'copy', '-f', 'mp4', f'{final_filename}'])
+    proc = subprocess.run([
+        'ffmpeg', 
+        '-i', f'{tmp_filename}', 
+        '-i', 'chapters.txt', 
+        '-map', '0', 
+        '-map_metadata', '1', 
+        '-c', 'copy', 
+        '-f', 'mp4',
+        '-metadata', f'title={title}',
+        '-metadata', f'author={author}',
+        f'{final_filename}'
+    ])
     Path(tmp_filename).unlink()
     if proc.returncode == 0:
         print(f'{final_filename} created. Enjoy your audiobook.')
@@ -194,22 +223,25 @@ def cli_main():
     epilog = 'example:\n' + \
              '  audiblez book.epub -l en-us -v af_sky'
     default_voice = 'af_sky' if 'af_sky' in voices else voices[0]
+
+    # Get available ONNX providers
+    available_providers = ort.get_available_providers()
+    providers_help = f"Available ONNX providers: {', '.join(available_providers)}"
+
     parser = argparse.ArgumentParser(epilog=epilog, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('epub_file_path', help='Path to the epub file')
     parser.add_argument('-l', '--lang', default='en-gb', help='Language code: en-gb, en-us, fr-fr, ja, ko, cmn')
     parser.add_argument('-v', '--voice', default=default_voice, help=f'Choose narrating voice: {voices_str}')
-    parser.add_argument('-c', '--cuda', default=False, help='Use cuda acceleration. Requires onnxruntime-gpu nvidia-cudnn-cu12. Set LD_LIBRARY_PATH=$venv/lib/python3.12/site-packages/nvidia/cudnn/lib/', action='store_true')
-    parser.add_argument('-p', '--pick', default=False, help='Manually select which chapters to read in the audiobook',
+    parser.add_argument('-p', '--pick', default=False, help=f'Interactively select which chapters to read in the audiobook',
                         action='store_true')
+    parser.add_argument('-s', '--speed', default=1.0, help=f'Set speed from 0.5 to 2.0', type=float)
+    parser.add_argument('--providers', nargs='+', metavar='PROVIDER', help=f"Specify ONNX providers. {providers_help}")
+    
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
         sys.exit(1)
     args = parser.parse_args()
-    if args.cuda:
-        from onnxruntime import InferenceSession
-        session = InferenceSession(MODEL_NAME, providers=[CUDA_PROVIDER])
-        kokoro = Kokoro.from_session(session, VOICES) 
-    main(kokoro, args.epub_file_path, args.lang, args.voice, args.pick)
+    main(kokoro, args.epub_file_path, args.lang, args.voice, args.pick, args.speed, args.providers)
 
 
 if __name__ == '__main__':
