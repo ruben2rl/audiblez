@@ -23,6 +23,8 @@ from pick import pick
 import onnxruntime as ort
 from tempfile import NamedTemporaryFile
 
+MODEL_FILE = 'kokoro-v0_19.onnx'
+VOICES_FILE = 'voices.json'
 config.MAX_PHONEME_LENGTH = 128
 
 
@@ -71,14 +73,14 @@ def main(kokoro, file_path, lang, voice, pick_manually, speed, providers):
     durations = {}
 
     for i, text in enumerate(texts, start=1):
-        if len(text.strip()) < 10:
-            print(f'Skipping empty chapter {i}')
-            chapter_mp3_files.remove(chapter_filename)
-            continue
         chapter_filename = filename.replace('.epub', f'_chapter_{i}.wav')
         chapter_mp3_files.append(chapter_filename)
         if Path(chapter_filename).exists():
             print(f'File for chapter {i} already exists. Skipping')
+            continue
+        if len(text.strip()) < 10:
+            print(f'Skipping empty chapter {i}')
+            chapter_mp3_files.remove(chapter_filename)
             continue
         print(f'Reading chapter {i} ({len(text):,} characters)...')
         if i == 1:
@@ -226,15 +228,12 @@ def create_index_file(title, creator, chapter_mp3_files, durations):
 
 
 def cli_main():
-    MODEL_NAME = 'kokoro-v0_19.onnx'
-    CUDA_PROVIDER = "CUDAExecutionProvider"
-    VOICES = 'voices.json'
-    if not Path(MODEL_NAME).exists() or not Path(VOICES).exists():
+    if not Path(MODEL_FILE).exists() or not Path(VOICES_FILE).exists():
         print('Error: kokoro-v0_19.onnx and voices.json must be in the current directory. Please download them with:')
         print('wget https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/kokoro-v0_19.onnx')
         print('wget https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/voices.json')
         sys.exit(1)
-    kokoro = Kokoro(MODEL_NAME, VOICES)
+    kokoro = Kokoro(MODEL_FILE, VOICES_FILE)
     voices = list(kokoro.get_voices())
     voices_str = ', '.join(voices)
     epilog = 'example:\n' + \
