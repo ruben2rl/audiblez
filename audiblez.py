@@ -112,7 +112,7 @@ def extract_texts(chapters):
         xml = chapter.get_body_content()
         soup = BeautifulSoup(xml, features='lxml')
         chapter_text = ''
-        html_content_tags = ['title', 'p', 'h1', 'h2', 'h3', 'h4']
+        html_content_tags = ['title', 'p', 'h1', 'h2', 'h3', 'h4', 'li']
         for child in soup.find_all(html_content_tags):
             inner_text = child.text.strip() if child.text else ""
             if inner_text:
