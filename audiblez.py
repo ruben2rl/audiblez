@@ -35,8 +35,10 @@ def main(pipeline, file_path, voice, pick_manually, speed):
     filename = Path(file_path).name
     warnings.simplefilter("ignore")
     book = epub.read_epub(file_path)
-    title = book.get_metadata('DC', 'title')[0][0]
-    creator = book.get_metadata('DC', 'creator')[0][0]
+    meta_title = book.get_metadata('DC', 'title')
+    title = meta_title[0][0] if meta_title else ''
+    meta_creator = book.get_metadata('DC', 'creator')
+    creator = meta_creator[0][0] if meta_creator else ''
 
     cover_maybe = [c for c in book.get_items() if c.get_type() == ebooklib.ITEM_COVER]
     cover_image = cover_maybe[0].get_content() if cover_maybe else b""
