@@ -7,7 +7,7 @@ import sys
 import time
 import shutil
 import subprocess
-import soundfile as sf
+import soundfile
 import ebooklib
 import warnings
 import re
@@ -82,7 +82,7 @@ def main(pipeline, file_path, voice, pick_manually, speed):
         start_time = time.time()
         generator = pipeline(text, voice=voice, speed=speed)
         for gs, ps, audio in generator:
-            sf.write(chapter_filename, audio, sample_rate)
+            soundfile.write(chapter_filename, audio, sample_rate)
         end_time = time.time()
         delta_seconds = end_time - start_time
         chars_per_sec = len(text) / delta_seconds
