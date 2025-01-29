@@ -1,5 +1,5 @@
-name: Run from main branch
-run-name: run from main branch
+name: Git clone and run
+run-name: Git clone and run
 on: [ push, pull_request ]
 jobs:
   git-clone-and-run:
@@ -10,17 +10,15 @@ jobs:
         with:
           python-version: '3.11'
       - uses: actions/checkout@v3
-      - name: Install audiblez
+      - name: Install dependencies
         run: pip install poetry && poetry install
-      - name: Check it runs as module
-        run: ./audiblez --help
       - name: check it runs as script
-        run: ./audiblez --help
+        run: python audiblez.py --help
       - name: install ffmpeg
         run: sudo apt-get install ffmpeg
       - name: download test epub
         run: wget https://github.com/daisy/epub-accessibility-tests/releases/download/fundamental-2.0/Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.epub
       - name: create audiobook
-        run: ./audiblez Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.epub
+        run: python audiblez.py Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.epub
       - name: check m4b output file
         run: ls -lah Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.m4b
