@@ -12,7 +12,7 @@ jobs:
       - name: Git clone
         run: git clone https://github.com/santinic/audiblez.git
       - name: Install audiblez
-        run: cd audiblez && poetry install
+        run: cd audiblez && pip install poetry && poetry install
       - name: Check it runs as module
         run: ./audiblez --help
       - name: check it runs as script
