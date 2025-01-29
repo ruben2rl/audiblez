@@ -9,10 +9,10 @@ jobs:
         uses: actions/setup-python@v5
         with:
           python-version: '3.11'
-      - name: Git clone
-        run: git clone https://github.com/santinic/audiblez.git
+      - uses: actions/checkout@v1
+        working-directory: ./audiblegiz
       - name: Install audiblez
-        run: cd audiblez && pip install poetry && poetry install
+        run: pip install poetry && poetry install
       - name: Check it runs as module
         run: ./audiblez --help
       - name: check it runs as script
