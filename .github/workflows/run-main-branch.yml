@@ -1,5 +1,5 @@
 name: Run from main branch
-run-name: pip install and run
+run-name: run from main branch
 on: [ push, pull_request ]
 jobs:
   git-clone-and-run:
