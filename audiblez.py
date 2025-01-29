@@ -61,7 +61,7 @@ def main(pipeline, file_path, voice, pick_manually, speed):
     print('Started at:', time.strftime('%H:%M:%S'))
     print(f'Total characters: {total_chars:,}')
     print('Total words:', len(' '.join(texts).split()))
-    chars_per_sec = 50  # assume 50 chars per second at the beginning
+    chars_per_sec = 500 if torch.cuda.is_available() else 50  # assume 50 or 500 chars per second at the beginning
     print(f'Estimated time remaining (assuming 50 chars/sec): {strfdelta((total_chars - processed_chars) / chars_per_sec)}')
 
     chapter_mp3_files = []
