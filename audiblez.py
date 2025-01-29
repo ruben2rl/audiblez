@@ -2,7 +2,6 @@
 # audiblez - A program to convert e-books into audiobooks using
 # Kokoro-82M model for high-quality text-to-speech synthesis.
 # by Claudio Santini 2025 - https://claudio.uk
-
 import argparse
 import sys
 import time
@@ -15,30 +14,23 @@ import re
 from pathlib import Path
 from string import Formatter
 from bs4 import BeautifulSoup
-from kokoro_onnx import config
-from kokoro_onnx import Kokoro
+from kokoro import KPipeline
 from ebooklib import epub
 from pydub import AudioSegment
 from pick import pick
-import onnxruntime as ort
 from tempfile import NamedTemporaryFile
 
-MODEL_FILE = 'kokoro-v0_19.onnx'
-VOICES_FILE = 'voices.json'
-config.MAX_PHONEME_LENGTH = 128
+sample_rate = 24000
+voices = [
+    'af_alloy', 'af_aoede', 'af_bella', 'af_jessica', 'af_kore', 'af_nicole',
+    'af_nova', 'af_river', 'af_sarah', 'af_sky', 'am_adam', 'am_echo', 'am_eric',
+    'am_fenrir', 'am_liam', 'am_michael', 'am_onyx', 'am_puck', 'bf_alice',
+    'bf_emma', 'bf_isabella', 'bf_lily', 'bm_daniel', 'bm_fable',
+    'bm_george', 'bm_lewis'
+]
 
 
-def main(kokoro, file_path, lang, voice, pick_manually, speed, providers):
-    # Set ONNX providers if specified
-    if providers:
-        available_providers = ort.get_available_providers()
-        invalid_providers = [p for p in providers if p not in available_providers]
-        if invalid_providers:
-            print(f"Invalid ONNX providers: {', '.join(invalid_providers)}")
-            print(f"Available providers: {', '.join(available_providers)}")
-            sys.exit(1)
-        kokoro.sess.set_providers(providers)
-        print(f"Using ONNX providers: {', '.join(providers)}")
+def main(pipeline, file_path, voice, pick_manually, speed):
     filename = Path(file_path).name
     warnings.simplefilter("ignore")
     book = epub.read_epub(file_path)
@@ -88,9 +80,9 @@ def main(kokoro, file_path, lang, voice, pick_manually, speed, providers):
         if i == 1:
             text = intro + '.\n\n' + text
         start_time = time.time()
-        samples, sample_rate = kokoro.create(text, voice=voice, speed=speed, lang=lang)
-        sf.write(f'{chapter_filename}', samples, sample_rate)
-        durations[chapter_filename] = len(samples) / sample_rate
+        generator = pipeline(text, voice=voice, speed=speed)
+        for gs, ps, audio in generator:
+            sf.write(chapter_filename, audio, sample_rate)
         end_time = time.time()
         delta_seconds = end_time - start_time
         chars_per_sec = len(text) / delta_seconds
@@ -226,36 +218,23 @@ def create_index_file(title, creator, chapter_mp3_files, durations):
 
 
 def cli_main():
-    if not Path(MODEL_FILE).exists() or not Path(VOICES_FILE).exists():
-        print('Error: kokoro-v0_19.onnx and voices.json must be in the current directory. Please download them with:')
-        print('wget https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/kokoro-v0_19.onnx')
-        print('wget https://github.com/thewh1teagle/kokoro-onnx/releases/download/model-files/voices.json')
-        sys.exit(1)
-    kokoro = Kokoro(MODEL_FILE, VOICES_FILE)
-    voices = list(kokoro.get_voices())
     voices_str = ', '.join(voices)
     epilog = 'example:\n' + \
              '  audiblez book.epub -l en-us -v af_sky'
     default_voice = 'af_sky' if 'af_sky' in voices else voices[0]
 
-    # Get available ONNX providers
-    available_providers = ort.get_available_providers()
-    providers_help = f"Available ONNX providers: {', '.join(available_providers)}"
-
     parser = argparse.ArgumentParser(epilog=epilog, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('epub_file_path', help='Path to the epub file')
-    parser.add_argument('-l', '--lang', default='en-gb', help='Language code: en-gb, en-us, fr-fr, ja, ko, cmn')
     parser.add_argument('-v', '--voice', default=default_voice, help=f'Choose narrating voice: {voices_str}')
-    parser.add_argument('-p', '--pick', default=False, help=f'Interactively select which chapters to read in the audiobook',
-                        action='store_true')
+    parser.add_argument('-p', '--pick', default=False, help=f'Interactively select which chapters to read in the audiobook', action='store_true')
     parser.add_argument('-s', '--speed', default=1.0, help=f'Set speed from 0.5 to 2.0', type=float)
-    parser.add_argument('--providers', nargs='+', metavar='PROVIDER', help=f"Specify ONNX providers. {providers_help}")
 
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
         sys.exit(1)
     args = parser.parse_args()
-    main(kokoro, args.epub_file_path, args.lang, args.voice, args.pick, args.speed, args.providers)
+    pipeline = KPipeline(lang_code=args.voice[0])  # a for american or b for british
+    main(pipeline, args.epub_file_path, args.voice, args.pick, args.speed)
 
 
 if __name__ == '__main__':
