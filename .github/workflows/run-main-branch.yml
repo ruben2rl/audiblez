@@ -10,7 +10,7 @@ jobs:
         with:
           python-version: '3.11'
       - name: Git clone
-        run: git clone git@github.com:santinic/audiblez.git
+        run: git clone https://github.com/santinic/audiblez.git
       - name: Install audiblez
         run: cd audiblez && poetry install
       - name: Check it runs as module
