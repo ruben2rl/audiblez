@@ -2,7 +2,7 @@ name: Run from main branch
 run-name: pip install and run
 on: [ push, pull_request ]
 jobs:
-  install-and-run-on-python-3-11:
+  git-clone-and-run:
     runs-on: ubuntu-latest
     steps:
       - name: Set up Python
