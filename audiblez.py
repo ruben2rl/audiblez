@@ -11,6 +11,7 @@ import soundfile
 import ebooklib
 import warnings
 import re
+import torch
 from pathlib import Path
 from string import Formatter
 from bs4 import BeautifulSoup
@@ -233,6 +234,13 @@ def cli_main():
         parser.print_help(sys.stderr)
         sys.exit(1)
     args = parser.parse_args()
+
+    if torch.cuda.is_available():
+        print('CUDA GPU available')
+        torch.set_default_device('cuda')
+    else:
+        print('CUDA GPU not available. Defaulting to CPU')
+
     pipeline = KPipeline(lang_code=args.voice[0])  # a for american or b for british
     main(pipeline, args.epub_file_path, args.voice, args.pick, args.speed)
 
