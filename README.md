@@ -12,9 +12,9 @@ using Kokoro's high-quality speech synthesis.
 
 [Kokoro-82M](https://huggingface.co/hexgrad/Kokoro-82M) is a recently published text-to-speech model with just 82M params and very natural sounding output.
 It's released under Apache licence and it was trained on < 100 hours of audio.
-It currently supports American and British English in a bunch of very good voices.
+It currently supports American and British English in a bunch of very good voices. 
 
-**Future support for French, Korean, Japanese and Mandarin is planned.**
+Future support for French, Korean, Japanese and Mandarin is planned.
 
 On a Google Colab's T4 GPU via Cuda, **it takes about 5 minutes to convert "Animal's Farm" by Orwell** (which is a bout 160,000 characters) to audiobook, at a rate of about 600 characters per second.
 
@@ -23,9 +23,12 @@ On my M2 MacBook Pro, on CPU, it takes about 1 hour, at a rate of about 60 chara
 ## How to install and run
 
 If you have Python 3 on your computer, you can install it with pip.
+You also need `espeak-ng` installed on your machine:
 
 ```bash
 pip install audiblez
+sudo apt install espeak-ng  # on Ubuntu/Debian
+brew install espeak-ng      # on Mac
 ```
 
 Then, to convert an epub file into an audiobook, just run:

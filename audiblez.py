@@ -38,14 +38,14 @@ def main(pipeline, file_path, voice, pick_manually, speed):
     meta_title = book.get_metadata('DC', 'title')
     title = meta_title[0][0] if meta_title else ''
     meta_creator = book.get_metadata('DC', 'creator')
-    creator = meta_creator[0][0] if meta_creator else ''
+    by_creator = 'by ' + meta_creator[0][0] if meta_creator else ''
 
     cover_maybe = [c for c in book.get_items() if c.get_type() == ebooklib.ITEM_COVER]
     cover_image = cover_maybe[0].get_content() if cover_maybe else b""
     if cover_maybe:
         print(f'Found cover image {cover_maybe[0].file_name} in {cover_maybe[0].media_type} format')
 
-    intro = f'{title} by {creator}'
+    intro = f'{title} {by_creator}'
     print(intro)
     print('Found Chapters:', [c.get_name() for c in book.get_items() if c.get_type() == ebooklib.ITEM_DOCUMENT])
     if pick_manually:
@@ -95,7 +95,7 @@ def main(pipeline, file_path, voice, pick_manually, speed):
         print('Progress:', f'{progress}%\n')
 
     if has_ffmpeg:
-        create_index_file(title, creator, chapter_mp3_files)
+        create_index_file(title, by_creator, chapter_mp3_files)
         create_m4b(chapter_mp3_files, filename, cover_image)
 
 

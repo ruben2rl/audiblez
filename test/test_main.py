@@ -1,3 +1,4 @@
+import os
 import unittest
 from pathlib import Path
 
@@ -11,11 +12,6 @@ class MainTest(unittest.TestCase):
         pipeline = KPipeline(lang_code='a')
         main(pipeline, file_path=file_path, voice='af_sky', pick_manually=False, speed=1, **kwargs)
 
-    # def test_0_txt(self):
-    #     Path('book.m4b').unlink(missing_ok=True)
-    #     self.base(file_path='../txt/book.txt')
-    #     self.assertTrue(Path('book.m4b').exists())
-
     def test_1_mini(self):
         Path('mini.m4b').unlink(missing_ok=True)
         self.base(file_path='../epub/mini.epub')
@@ -26,12 +22,11 @@ class MainTest(unittest.TestCase):
         self.base(file_path='../epub/poe.epub')
         self.assertTrue(Path('poe.m4b').exists())
 
-    # def test_3_gene(self):
-    #     Path('gene.m4b').unlink(missing_ok=True)
-    #     self.base(file_path='../epub/gene.epub')
-    #     self.assertTrue(Path('gene.m4b').exists())
-
     def test_orwell(self):
         Path('orwell.m4b').unlink(missing_ok=True)
+        os.system('rm orwell_chapter_*.wav')
         self.base(file_path='../epub/orwell.epub')
         self.assertTrue(Path('orwell.m4b').exists())
+        for i in range(8):
+            self.assertTrue(Path(f'orwell_chapter_{i}.wav').exists())
+            self.assertTrue(Path(f'orwell_chapter_{i}.wav').stat().st_size > 300 * 1024, 'file should be larger than 300KB, surely failed')
