@@ -8,7 +8,7 @@ from audiblez import main
 
 class MainTest(unittest.TestCase):
     def base(self, file_path, **kwargs):
-        pipeline = KPipeline(lang_code='a')  # a for american or b for british
+        pipeline = KPipeline(lang_code='a')
         main(pipeline, file_path=file_path, voice='af_sky', pick_manually=False, speed=1, **kwargs)
 
     # def test_0_txt(self):
@@ -30,3 +30,8 @@ class MainTest(unittest.TestCase):
     #     Path('gene.m4b').unlink(missing_ok=True)
     #     self.base(file_path='../epub/gene.epub')
     #     self.assertTrue(Path('gene.m4b').exists())
+
+    def test_orwell(self):
+        Path('orwell.m4b').unlink(missing_ok=True)
+        self.base(file_path='../epub/orwell.epub')
+        self.assertTrue(Path('orwell.m4b').exists())

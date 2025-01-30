@@ -67,8 +67,6 @@ def main(pipeline, file_path, voice, pick_manually, speed):
     print(f'Estimated time remaining (assuming {chars_per_sec} chars/sec): {strfdelta((total_chars - processed_chars) / chars_per_sec)}')
 
     chapter_mp3_files = []
-    durations = {}
-
     for i, text in enumerate(texts, start=1):
         chapter_filename = filename.replace('.epub', f'_chapter_{i}.wav')
         chapter_mp3_files.append(chapter_filename)
@@ -97,8 +95,8 @@ def main(pipeline, file_path, voice, pick_manually, speed):
         print('Progress:', f'{progress}%\n')
 
     if has_ffmpeg:
-        create_index_file(title, creator, chapter_mp3_files, durations)
-        create_m4b(chapter_mp3_files, filename, title, creator, cover_image)
+        create_index_file(title, creator, chapter_mp3_files)
+        create_m4b(chapter_mp3_files, filename, cover_image)
 
 
 def extract_texts(chapters):
@@ -132,7 +130,6 @@ def find_chapters(book, verbose=False):
         for item in book.get_items():
             if item.get_type() == ebooklib.ITEM_DOCUMENT:
                 print(f"'{item.get_name()}'" + ', #' + str(len(item.get_body_content())))
-                # print(f'{item.get_name()}'.ljust(60), str(len(item.get_body_content())).ljust(15), 'X' if item in chapters else '-')
     if len(chapters) == 0:
         print('Not easy to find the chapters, defaulting to all available documents.')
         chapters = [c for c in book.get_items() if c.get_type() == ebooklib.ITEM_DOCUMENT]
@@ -161,7 +158,7 @@ def strfdelta(tdelta, fmt='{D:02}d {H:02}h {M:02}m {S:02}s'):
     return f.format(fmt, **values)
 
 
-def create_m4b(chapter_files, filename, title, author, cover_image):
+def create_m4b(chapter_files, filename, cover_image):
     tmp_filename = filename.replace('.epub', '.tmp.mp4')
     if not Path(tmp_filename).exists():
         combined_audio = AudioSegment.empty()
@@ -206,15 +203,14 @@ def probe_duration(file_name):
     return float(proc.stdout.strip())
 
 
-def create_index_file(title, creator, chapter_mp3_files, durations):
+def create_index_file(title, creator, chapter_mp3_files):
     with open("chapters.txt", "w") as f:
         f.write(f";FFMETADATA1\ntitle={title}\nartist={creator}\n\n")
         start = 0
         i = 0
         for c in chapter_mp3_files:
-            if c not in durations:
-                durations[c] = probe_duration(c)
-            end = start + (int)(durations[c] * 1000)
+            duration = probe_duration(c)
+            end = start + (int)(duration * 1000)
             f.write(f"[CHAPTER]\nTIMEBASE=1/1000\nSTART={start}\nEND={end}\ntitle=Chapter {i}\n\n")
             i += 1
             start = end
@@ -231,17 +227,19 @@ def cli_main():
     parser.add_argument('-v', '--voice', default=default_voice, help=f'Choose narrating voice: {voices_str}')
     parser.add_argument('-p', '--pick', default=False, help=f'Interactively select which chapters to read in the audiobook', action='store_true')
     parser.add_argument('-s', '--speed', default=1.0, help=f'Set speed from 0.5 to 2.0', type=float)
+    parser.add_argument('-c', '--cuda', default=False, help=f'Use GPU via Cuda in Torch if available', type=float)
 
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
         sys.exit(1)
     args = parser.parse_args()
 
-    if torch.cuda.is_available():
-        print('CUDA GPU available')
-        torch.set_default_device('cuda')
-    else:
-        print('CUDA GPU not available. Defaulting to CPU')
+    if args.cuda:
+        if torch.cuda.is_available():
+            print('CUDA GPU available')
+            torch.set_default_device('cuda')
+        else:
+            print('CUDA GPU not available. Defaulting to CPU')
 
     pipeline = KPipeline(lang_code=args.voice[0])  # a for american or b for british
     main(pipeline, args.epub_file_path, args.voice, args.pick, args.speed)

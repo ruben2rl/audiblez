@@ -57,13 +57,13 @@ You can try them here: [https://huggingface.co/spaces/hexgrad/Kokoro-TTS](https:
 
 ## How to run on GPU
 
-By default audiblez runs on CPU. If it finds CUDA available as Torch device it tries to use it.
+Experimental support for Cuda is available b
 
-We don't currently support Apple Silicon, as there is not yet a Kokoro implementation in MLX. As soon as it will be available, we will support it.
-
-## How to run on Google Colab
+By default audiblez runs on CPU. If you pass the option `--cuda` it will try to use the Cuda device via Torch.
 
 Check out this example: [Audiblez running on a Google Colab Notebook with Cuda ](https://colab.research.google.com/drive/164PQLowogprWQpRjKk33e-8IORAvqXKI?usp=sharing]).
+
+We don't currently support Apple Silicon, as there is not yet a Kokoro implementation in MLX. As soon as it will be available, we will support it.
 
 ## Author
 
