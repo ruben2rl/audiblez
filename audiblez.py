@@ -7,6 +7,8 @@ import sys
 import time
 import shutil
 import subprocess
+
+import numpy as np
 import soundfile
 import ebooklib
 import warnings
@@ -63,7 +65,7 @@ def main(pipeline, file_path, voice, pick_manually, speed):
     print('Started at:', time.strftime('%H:%M:%S'))
     print(f'Total characters: {total_chars:,}')
     print('Total words:', len(' '.join(texts).split()))
-    chars_per_sec = 500 if torch.cuda.is_available() else 50  # assume 50 or 500 chars per second at the beginning
+    chars_per_sec = 500 if torch.cuda.is_available() else 50
     print(f'Estimated time remaining (assuming {chars_per_sec} chars/sec): {strfdelta((total_chars - processed_chars) / chars_per_sec)}')
 
     chapter_mp3_files = []
@@ -81,23 +83,42 @@ def main(pipeline, file_path, voice, pick_manually, speed):
         if i == 1:
             text = intro + '.\n\n' + text
         start_time = time.time()
-        generator = pipeline(text, voice=voice, speed=speed)
-        for gs, ps, audio in generator:
-            soundfile.write(chapter_filename, audio, sample_rate)
-        end_time = time.time()
-        delta_seconds = end_time - start_time
-        chars_per_sec = len(text) / delta_seconds
-        processed_chars += len(text)
-        print(f'Estimated time remaining: {strfdelta((total_chars - processed_chars) / chars_per_sec)}')
-        print('Chapter written to', chapter_filename)
-        print(f'Chapter {i} read in {delta_seconds:.2f} seconds ({chars_per_sec:.0f} characters per second)')
-        progress = processed_chars * 100 // total_chars
-        print('Progress:', f'{progress}%\n')
+        audio_segments = []
+        chunk_size = 5000  # Adjust chunk size as needed
+
+        # Fixed the text processing loop
+        remaining_text = text
+        while remaining_text:
+            chunk = remaining_text[:chunk_size]
+            remaining_text = remaining_text[chunk_size:]
+            
+            # Process the chunk
+            chunk_segments = []
+            for gs, ps, audio in pipeline(chunk, voice=voice, speed=speed):
+                chunk_segments.append(audio)
+            
+            if chunk_segments:  # Only append if we got valid audio segments
+                audio_segments.extend(chunk_segments)
+
+        if audio_segments:  # Only concatenate if we have segments
+            final_audio = np.concatenate(audio_segments)
+            soundfile.write(chapter_filename, final_audio, sample_rate)
+            end_time = time.time()
+            delta_seconds = end_time - start_time
+            chars_per_sec = len(text) / delta_seconds
+            processed_chars += len(text)
+            print(f'Estimated time remaining: {strfdelta((total_chars - processed_chars) / chars_per_sec)}')
+            print('Chapter written to', chapter_filename)
+            print(f'Chapter {i} read in {delta_seconds:.2f} seconds ({chars_per_sec:.0f} characters per second)')
+            progress = processed_chars * 100 // total_chars
+            print('Progress:', f'{progress}%\n')
+        else:
+            print(f'Warning: No audio generated for chapter {i}')
+            chapter_mp3_files.remove(chapter_filename)
 
     if has_ffmpeg:
         create_index_file(title, by_creator, chapter_mp3_files)
         create_m4b(chapter_mp3_files, filename, cover_image)
-
 
 def extract_texts(chapters):
     texts = []
