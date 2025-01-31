@@ -23,12 +23,14 @@ On my M2 MacBook Pro, on CPU, it takes about 1 hour, at a rate of about 60 chara
 ## How to install and run
 
 If you have Python 3 on your computer, you can install it with pip.
-You also need `espeak-ng` installed on your machine:
+You also need `espeak-ng` and `ffmpeg` installed on your machine:
 
 ```bash
 pip install audiblez
-sudo apt install espeak-ng  # on Ubuntu/Debian
-brew install espeak-ng      # on Mac
+
+sudo apt install ffmpeg espeak-ng     # on Ubuntu/Debian
+
+brew install ffmpeg espeak-ng         # on Mac
 ```
 
 Then, to convert an epub file into an audiobook, just run:
