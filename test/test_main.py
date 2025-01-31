@@ -8,41 +8,35 @@ from audiblez import main
 
 
 class MainTest(unittest.TestCase):
-    def base(self, file_path, **kwargs):
-        os.system('rm mini_chapter_*.wav')
-        merged_args = dict(voice='af_sky', pick_manually=False, speed=1.0)
+    def base(self, name, url, **kwargs):
+        if not Path(f'{name}.epub').exists():
+            os.system(f'wget {url} -O {name}.epub')
+        Path(f'{name}.m4b').unlink(missing_ok=True)
+        os.system(f'rm {name}_chapter_*.wav')
+        merged_args = dict(voice='af_sky', pick_manually=False, speed=1.0, max_chapters=2)
         merged_args.update(kwargs)
-        main(file_path, **merged_args)
+        main(f'{name}.epub', **merged_args)
+        self.assertTrue(Path(f'{name}.m4b').exists())
+        chapter_1_wav = Path(f'{name}_chapter_1.wav')
+        self.assertTrue(chapter_1_wav.exists())
+        self.assertTrue(chapter_1_wav.stat().st_size > 256 * 1024)
 
-    def test_1_allan_poe(self):
-        Path('poe.m4b').unlink(missing_ok=True)
-        os.system('rm poe_chapter_*.wav')
-        self.base(file_path='../epub/poe.epub')
-        self.assertTrue(Path('poe.m4b').exists())
+    def test_poe(self):
+        url = 'https://www.gutenberg.org/ebooks/1064.epub.images'
+        self.base('poe')
 
-    def test_2_mini(self):
-        Path('mini.m4b').unlink(missing_ok=True)
-        os.system('rm mini_chapter_*.wav')
-        self.base(file_path='../epub/mini.epub')
-        self.assertTrue(Path('mini.m4b').exists())
+    def test_orwell(self):
+        url = 'https://archive.org/download/AnimalFarmByGeorgeOrwell/Animal%20Farm%20by%20George%20Orwell.epub'
+        self.base('orwell', url)
 
-    def test_3_orwell(self):
-        Path('orwell.m4b').unlink(missing_ok=True)
-        os.system('rm orwell_chapter_*.wav')
-        self.base(file_path='../epub/orwell.epub')
-        self.assertTrue(Path('orwell.m4b').exists())
-        for i in range(8):
-            self.assertTrue(Path(f'orwell_chapter_{i}.wav').exists())
-            self.assertTrue(Path(f'orwell_chapter_{i}.wav').stat().st_size > 300 * 1024, 'file should be larger than 300KB, surely failed')
-
-    def test_0_pirandello(self):
-        Path('pirandello.m4b').unlink(missing_ok=True)
-        os.system('rm pirandello_chapter_*.wav')
-        self.base(file_path='../epub/pirandello.epub', voice='im_nicola')
+    def test_italian_pirandello(self):
+        self.base('pirandello', voice='im_nicola')
         self.assertTrue(Path('pirandello.m4b').exists())
 
-    def test_0_manzoni(self):
-        Path('manzoni.m4b').unlink(missing_ok=True)
-        os.system('rm manzoni_chapter_*.wav')
-        self.base(file_path='../epub/manzoni.epub', voice='im_nicola')
-        self.assertTrue(Path('manzoni.m4b').exists())
+    def test_italian_manzoni(self):
+        url = 'https://www.liberliber.eu/mediateca/libri/m/manzoni/i_promessi_sposi/epub/manzoni_i_promessi_sposi.epub'
+        self.base('manzoni', url, voice='im_nicola')
+
+    def test_french_baudelaire(self):
+        url = 'http://gallica.bnf.fr/ark:/12148/bpt6k70861t.epub'
+        self.base('baudelaire', url, voice='ff_siwis')

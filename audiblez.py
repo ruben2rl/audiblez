@@ -2,19 +2,21 @@
 # audiblez - A program to convert e-books into audiobooks using
 # Kokoro-82M model for high-quality text-to-speech synthesis.
 # by Claudio Santini 2025 - https://claudio.uk
+import torch
+import spacy
+import ebooklib
+import soundfile
+import numpy as np
 import argparse
 import sys
 import time
 import shutil
 import subprocess
-import numpy as np
-import soundfile
-import ebooklib
 import warnings
 import re
-import torch
 from pathlib import Path
 from string import Formatter
+from yaspin import yaspin
 from bs4 import BeautifulSoup
 from kokoro import KPipeline
 from ebooklib import epub
@@ -27,7 +29,7 @@ from voices import voices, available_voices_str
 sample_rate = 24000
 
 
-def main(file_path, voice, pick_manually, speed):
+def main(file_path, voice, pick_manually, speed, max_chapters=None):
     filename = Path(file_path).name
     warnings.simplefilter("ignore")
     book = epub.read_epub(file_path)
@@ -43,14 +45,12 @@ def main(file_path, voice, pick_manually, speed):
 
     intro = f'{title} {by_creator}'
     print(intro)
-    print('Found Chapters:', [c.get_name() for c in book.get_items() if c.get_type() == ebooklib.ITEM_DOCUMENT])
 
     document_chapters = find_document_chapters_and_extract_texts(book)
-    if pick_manually:
+    if pick_manually is True:
         chapters = pick_chapters(document_chapters)
     else:
-        chapters = find_chapters(document_chapters)
-    print('Automatically selected chapters:', [c.get_name() for c in chapters])
+        chapters = find_good_chapters(document_chapters)
     texts = [c.extracted_text for c in chapters]
 
     has_ffmpeg = shutil.which('ffmpeg') is not None
@@ -64,49 +64,58 @@ def main(file_path, voice, pick_manually, speed):
     chars_per_sec = 500 if torch.cuda.is_available() else 50
     print(f'Estimated time remaining (assuming {chars_per_sec} chars/sec): {strfdelta((total_chars - processed_chars) / chars_per_sec)}')
 
-    chapter_mp3_files = []
+    chapter_wav_files = []
     for i, text in enumerate(texts, start=1):
-        chapter_filename = filename.replace('.epub', f'_chapter_{i}.wav')
-        chapter_mp3_files.append(chapter_filename)
-        if Path(chapter_filename).exists():
-            print(f'File for chapter {i} already exists. Skipping')
-            continue
-        if len(text.strip()) < 10:
-            print(f'Skipping empty chapter {i}')
-            chapter_mp3_files.remove(chapter_filename)
-            continue
-        print(f'Reading chapter {i} ({len(text):,} characters)...')
-        if i == 1:
-            text = intro + '.\n\n' + text
-        start_time = time.time()
+        if max_chapters and i > max_chapters: break
+        with yaspin(text=f'Reading chapter {i} ({len(text):,} characters)...') as spinner:
+            chapter_filename = filename.replace('.epub', f'_chapter_{i}.wav')
+            chapter_wav_files.append(chapter_filename)
+            if Path(chapter_filename).exists():
+                print(f'File for chapter {i} already exists. Skipping')
+                continue
+            if len(text.strip()) < 10:
+                print(f'Skipping empty chapter {i}')
+                chapter_wav_files.remove(chapter_filename)
+                continue
+            print(f'Reading chapter {i} ({len(text):,} characters)...')
+            if i == 1:
+                text = intro + '.\n\n' + text
+            start_time = time.time()
 
-        audio_segments = gen_audio_segments(text, voice, speed)
-        if audio_segments:
-            final_audio = np.concatenate(audio_segments)
-            soundfile.write(chapter_filename, final_audio, sample_rate)
-            end_time = time.time()
-            delta_seconds = end_time - start_time
-            chars_per_sec = len(text) / delta_seconds
-            processed_chars += len(text)
-            print(f'Estimated time remaining: {strfdelta((total_chars - processed_chars) / chars_per_sec)}')
-            print('Chapter written to', chapter_filename)
-            print(f'Chapter {i} read in {delta_seconds:.2f} seconds ({chars_per_sec:.0f} characters per second)')
-            progress = processed_chars * 100 // total_chars
-            print('Progress:', f'{progress}%\n')
-        else:
-            print(f'Warning: No audio generated for chapter {i}')
-            chapter_mp3_files.remove(chapter_filename)
+            audio_segments = gen_audio_segments(text, voice, speed)
+            if audio_segments:
+                final_audio = np.concatenate(audio_segments)
+                soundfile.write(chapter_filename, final_audio, sample_rate)
+                end_time = time.time()
+                delta_seconds = end_time - start_time
+                chars_per_sec = len(text) / delta_seconds
+                processed_chars += len(text)
+                spinner.ok("✅")
+                print(f'Estimated time remaining: {strfdelta((total_chars - processed_chars) / chars_per_sec)}')
+                print('Chapter written to', chapter_filename)
+                print(f'Chapter {i} read in {delta_seconds:.2f} seconds ({chars_per_sec:.0f} characters per second)')
+                progress = processed_chars * 100 // total_chars
+                print('Progress:', f'{progress}%\n')
+            else:
+                spinner.fail("❌")
+                print(f'Warning: No audio generated for chapter {i}')
+                chapter_wav_files.remove(chapter_filename)
 
     if has_ffmpeg:
-        create_index_file(title, by_creator, chapter_mp3_files)
-        create_m4b(chapter_mp3_files, filename, cover_image)
+        create_index_file(title, by_creator, chapter_wav_files)
+        create_m4b(chapter_wav_files, filename, cover_image)
 
 
 def gen_audio_segments(text, voice, speed):
     pipeline = KPipeline(lang_code=voice[0])  # a for american or b for british etc.
+    nlp = spacy.load('xx_ent_wiki_sm')
+    nlp.add_pipe('sentencizer')
     audio_segments = []
-    for gs, ps, audio in pipeline(text, voice=voice, speed=speed, split_pattern=r'\n+'):
-        audio_segments.append(audio)
+    doc = nlp(text)
+    sentences = list(doc.sents)
+    for sent in sentences:
+        for gs, ps, audio in pipeline(sent.text, voice=voice, speed=speed, split_pattern=r'\n\n\n'):
+            audio_segments.append(audio)
     return audio_segments
 
 
@@ -131,25 +140,27 @@ def find_document_chapters_and_extract_texts(book):
 
 def is_chapter(c):
     name = c.get_name().lower()
-    has_min_len = len(c.get_body_content()) > 100
+    has_min_len = len(c.extracted_text) > 100
     title_looks_like_chapter = bool(
         'chapter' in name.lower()
-        or re.search(r'part\d{1,3}', name)
-        or re.search(r'ch\d{1,3}', name)
-        or re.search(r'chap\d{1,3}', name)
+        or re.search(r'part_?\d{1,3}', name)
+        or re.search(r'split_?\d{1,3}', name)
+        or re.search(r'ch_?\d{1,3}', name)
+        or re.search(r'chap_?\d{1,3}', name)
     )
     return has_min_len and title_looks_like_chapter
 
 
-def find_chapters(document_chapters, verbose=False):
+def find_good_chapters(document_chapters):
     chapters = [c for c in document_chapters if c.get_type() == ebooklib.ITEM_DOCUMENT and is_chapter(c)]
-    if verbose:
-        for item in chapters:
-            if item.get_type() == ebooklib.ITEM_DOCUMENT:
-                print(f"'{item.get_name()}'" + ', #' + str(len(item.get_body_content())))
+    from tabulate import tabulate
     if len(chapters) == 0:
-        print('Not easy to find the chapters, defaulting to all available documents.')
+        print('Not easy to recognize the chapters, defaulting to all available documents.')
         chapters = [c for c in document_chapters if c.get_type() == ebooklib.ITEM_DOCUMENT]
+    print(tabulate([
+        [i, c.get_name(), len(c.extracted_text), '✅' if c in chapters else '']
+        for i, c in enumerate(document_chapters, start=1)
+    ], headers=['#', 'Chapter', 'Text Length', 'Selected']))
     return chapters
 
 
