@@ -50,6 +50,7 @@ def main(file_path, voice, pick_manually, speed, max_chapters=None):
         chapters = pick_chapters(document_chapters)
     else:
         chapters = find_good_chapters(document_chapters)
+    print_selected_chapters(document_chapters, chapters)
     texts = [c.extracted_text for c in chapters]
 
     has_ffmpeg = shutil.which('ffmpeg') is not None
@@ -66,22 +67,22 @@ def main(file_path, voice, pick_manually, speed, max_chapters=None):
     chapter_wav_files = []
     for i, text in enumerate(texts, start=1):
         if max_chapters and i > max_chapters: break
-        with yaspin(text=f'Reading chapter {i} ({len(text):,} characters)...') as spinner:
-            chapter_filename = filename.replace('.epub', f'_chapter_{i}.wav')
-            chapter_wav_files.append(chapter_filename)
-            if Path(chapter_filename).exists():
-                print(f'File for chapter {i} already exists. Skipping')
-                continue
-            if len(text.strip()) < 10:
-                print(f'Skipping empty chapter {i}')
-                chapter_wav_files.remove(chapter_filename)
-                continue
-            print(f'Reading chapter {i} ({len(text):,} characters)...')
-            if i == 1:
-                text = intro + '.\n\n' + text
-            start_time = time.time()
+        chapter_filename = filename.replace('.epub', f'_chapter_{i}.wav')
+        chapter_wav_files.append(chapter_filename)
+        if Path(chapter_filename).exists():
+            print(f'File for chapter {i} already exists. Skipping')
+            continue
+        if len(text.strip()) < 10:
+            print(f'Skipping empty chapter {i}')
+            chapter_wav_files.remove(chapter_filename)
+            continue
+        if i == 1:
+            text = intro + '.\n\n' + text
+        start_time = time.time()
+        pipeline = KPipeline(lang_code=voice[0])  # a for american or b for british etc.
 
-            audio_segments = gen_audio_segments(text, voice, speed)
+        with yaspin(text=f'Reading chapter {i} ({len(text):,} characters)...', color="yellow") as spinner:
+            audio_segments = gen_audio_segments(pipeline, text, voice, speed)
             if audio_segments:
                 final_audio = np.concatenate(audio_segments)
                 soundfile.write(chapter_filename, final_audio, sample_rate)
@@ -105,8 +106,14 @@ def main(file_path, voice, pick_manually, speed, max_chapters=None):
         create_m4b(chapter_wav_files, filename, cover_image)
 
 
-def gen_audio_segments(text, voice, speed):
-    pipeline = KPipeline(lang_code=voice[0])  # a for american or b for british etc.
+def print_selected_chapters(document_chapters, chapters):
+    print(tabulate([
+        [i, c.get_name(), len(c.extracted_text), '✅' if c in chapters else '', chapter_beginning_one_liner(c)]
+        for i, c in enumerate(document_chapters, start=1)
+    ], headers=['#', 'Chapter', 'Text Length', 'Selected', 'First words']))
+
+
+def gen_audio_segments(pipeline, text, voice, speed):
     nlp = spacy.load('xx_ent_wiki_sm')
     nlp.add_pipe('sentencizer')
     audio_segments = []
@@ -160,10 +167,6 @@ def find_good_chapters(document_chapters):
     if len(chapters) == 0:
         print('Not easy to recognize the chapters, defaulting to all non-empty documents.')
         chapters = [c for c in document_chapters if c.get_type() == ebooklib.ITEM_DOCUMENT and len(c.extracted_text) > 10]
-    print(tabulate([
-        [i, c.get_name(), len(c.extracted_text), '✅' if c in chapters else '', chapter_beginning_one_liner(c)]
-        for i, c in enumerate(document_chapters, start=1)
-    ], headers=['#', 'Chapter', 'Text Length', 'Selected', 'First words']))
     return chapters
 
 
