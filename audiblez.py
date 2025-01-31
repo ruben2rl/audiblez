@@ -49,7 +49,6 @@ def main(kokoro, file_path, lang, voice, pick_manually, speed, providers):
     cover_image = cover_maybe.get_content() if cover_maybe else b""
     if cover_maybe:
         print(f'Found cover image {cover_maybe.file_name} in {cover_maybe.media_type} format')
-    exit(0);
 
     intro = f'{title} by {creator}'
     print(intro)
