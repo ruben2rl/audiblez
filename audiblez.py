@@ -27,7 +27,7 @@ from voices import voices, available_voices_str
 sample_rate = 24000
 
 
-def main(pipeline, file_path, voice, pick_manually, speed):
+def main(file_path, voice, pick_manually, speed):
     filename = Path(file_path).name
     warnings.simplefilter("ignore")
     book = epub.read_epub(file_path)
@@ -78,7 +78,7 @@ def main(pipeline, file_path, voice, pick_manually, speed):
             text = intro + '.\n\n' + text
         start_time = time.time()
 
-        audio_segments = gen_audio_segments(pipeline, text, voice, speed)
+        audio_segments = gen_audio_segments(text, voice, speed)
         if audio_segments:
             final_audio = np.concatenate(audio_segments)
             soundfile.write(chapter_filename, final_audio, sample_rate)
@@ -100,7 +100,8 @@ def main(pipeline, file_path, voice, pick_manually, speed):
         create_m4b(chapter_mp3_files, filename, cover_image)
 
 
-def gen_audio_segments(pipeline, text, voice, speed):
+def gen_audio_segments(text, voice, speed):
+    pipeline = KPipeline(lang_code=voice[0])  # a for american or b for british etc.
     audio_segments = []
     for gs, ps, audio in pipeline(text, voice=voice, speed=speed, split_pattern=r'\n+'):
         audio_segments.append(audio)
@@ -250,8 +251,7 @@ def cli_main():
         else:
             print('CUDA GPU not available. Defaulting to CPU')
 
-    pipeline = KPipeline(lang_code=args.voice[0])  # a for american or b for british
-    main(pipeline, args.epub_file_path, args.voice, args.pick, args.speed)
+    main(args.epub_file_path, args.voice, args.pick, args.speed)
 
 
 if __name__ == '__main__':
