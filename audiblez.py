@@ -12,8 +12,8 @@ import sys
 import time
 import shutil
 import subprocess
-import warnings
 import re
+from tabulate import tabulate
 from pathlib import Path
 from string import Formatter
 from yaspin import yaspin
@@ -31,19 +31,18 @@ sample_rate = 24000
 
 def main(file_path, voice, pick_manually, speed, max_chapters=None):
     filename = Path(file_path).name
-    warnings.simplefilter("ignore")
     book = epub.read_epub(file_path)
     meta_title = book.get_metadata('DC', 'title')
     title = meta_title[0][0] if meta_title else ''
     meta_creator = book.get_metadata('DC', 'creator')
-    by_creator = 'by ' + meta_creator[0][0] if meta_creator else ''
+    creator = meta_creator[0][0] if meta_creator else ''
 
     cover_maybe = [c for c in book.get_items() if c.get_type() == ebooklib.ITEM_COVER]
     cover_image = cover_maybe[0].get_content() if cover_maybe else b""
     if cover_maybe:
         print(f'Found cover image {cover_maybe[0].file_name} in {cover_maybe[0].media_type} format')
 
-    intro = f'{title} {by_creator}'
+    intro = f'{title} – {creator}.\n\n'
     print(intro)
 
     document_chapters = find_document_chapters_and_extract_texts(book)
@@ -102,7 +101,7 @@ def main(file_path, voice, pick_manually, speed, max_chapters=None):
                 chapter_wav_files.remove(chapter_filename)
 
     if has_ffmpeg:
-        create_index_file(title, by_creator, chapter_wav_files)
+        create_index_file(title, creator, chapter_wav_files)
         create_m4b(chapter_wav_files, filename, cover_image)
 
 
@@ -151,25 +150,32 @@ def is_chapter(c):
     return has_min_len and title_looks_like_chapter
 
 
+def chapter_beginning_one_liner(c, chars=20):
+    s = c.extracted_text[:chars].strip().replace('\n', ' ').replace('\r', ' ')
+    return s + '…' if len(s) > 0 else ''
+
+
 def find_good_chapters(document_chapters):
     chapters = [c for c in document_chapters if c.get_type() == ebooklib.ITEM_DOCUMENT and is_chapter(c)]
-    from tabulate import tabulate
     if len(chapters) == 0:
-        print('Not easy to recognize the chapters, defaulting to all available documents.')
-        chapters = [c for c in document_chapters if c.get_type() == ebooklib.ITEM_DOCUMENT]
+        print('Not easy to recognize the chapters, defaulting to all non-empty documents.')
+        chapters = [c for c in document_chapters if c.get_type() == ebooklib.ITEM_DOCUMENT and len(c.extracted_text) > 10]
     print(tabulate([
-        [i, c.get_name(), len(c.extracted_text), '✅' if c in chapters else '']
+        [i, c.get_name(), len(c.extracted_text), '✅' if c in chapters else '', chapter_beginning_one_liner(c)]
         for i, c in enumerate(document_chapters, start=1)
-    ], headers=['#', 'Chapter', 'Text Length', 'Selected']))
+    ], headers=['#', 'Chapter', 'Text Length', 'Selected', 'First words']))
     return chapters
 
 
 def pick_chapters(chapters):
-    all_chapters_names = [c.get_name() for c in chapters if c.get_type() == ebooklib.ITEM_DOCUMENT]
+    # Display the document name, the length and first 50 characters of the text
+    chapters_by_names = {
+        f'{c.get_name()}\t({len(c.extracted_text)} chars)\t[{chapter_beginning_one_liner(c, 50)}]': c
+        for c in chapters}
     title = 'Select which chapters to read in the audiobook'
-    selected_chapters_names = pick(all_chapters_names, title, multiselect=True, min_selection_count=1)
-    selected_chapters_names = [c[0] for c in selected_chapters_names]
-    selected_chapters = [c for c in chapters if c.get_name() in selected_chapters_names]
+    ret = pick(list(chapters_by_names.keys()), title, multiselect=True, min_selection_count=1)
+    selected_chapters_out_of_order = [chapters_by_names[r[0]] for r in ret]
+    selected_chapters = [c for c in chapters if c in selected_chapters_out_of_order]
     return selected_chapters
 
 

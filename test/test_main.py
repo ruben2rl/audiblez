@@ -16,26 +16,29 @@ class MainTest(unittest.TestCase):
         merged_args = dict(voice='af_sky', pick_manually=False, speed=1.0, max_chapters=2)
         merged_args.update(kwargs)
         main(f'{name}.epub', **merged_args)
-        self.assertTrue(Path(f'{name}.m4b').exists())
+        m4b_file = Path(f'{name}.m4b')
+        self.assertTrue(m4b_file.exists())
+        self.assertTrue(m4b_file.stat().st_size > 256 * 1024)
         chapter_1_wav = Path(f'{name}_chapter_1.wav')
         self.assertTrue(chapter_1_wav.exists())
         self.assertTrue(chapter_1_wav.stat().st_size > 256 * 1024)
 
     def test_poe(self):
         url = 'https://www.gutenberg.org/ebooks/1064.epub.images'
-        self.base('poe')
+        self.base('poe', url)
 
     def test_orwell(self):
         url = 'https://archive.org/download/AnimalFarmByGeorgeOrwell/Animal%20Farm%20by%20George%20Orwell.epub'
         self.base('orwell', url)
 
     def test_italian_pirandello(self):
-        self.base('pirandello', voice='im_nicola')
+        url = 'https://www.liberliber.eu/mediateca/libri/p/pirandello/cosi_e_se_vi_pare_1925/epub/pirandello_cosi_e_se_vi_pare_1925.epub'
+        self.base('pirandello', url, voice='im_nicola')
         self.assertTrue(Path('pirandello.m4b').exists())
 
     def test_italian_manzoni(self):
         url = 'https://www.liberliber.eu/mediateca/libri/m/manzoni/i_promessi_sposi/epub/manzoni_i_promessi_sposi.epub'
-        self.base('manzoni', url, voice='im_nicola')
+        self.base('manzoni', url, voice='im_nicola', max_chapters=1)
 
     def test_french_baudelaire(self):
         url = 'http://gallica.bnf.fr/ark:/12148/bpt6k70861t.epub'
