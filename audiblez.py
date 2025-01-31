@@ -44,12 +44,14 @@ def main(file_path, voice, pick_manually, speed):
     intro = f'{title} {by_creator}'
     print(intro)
     print('Found Chapters:', [c.get_name() for c in book.get_items() if c.get_type() == ebooklib.ITEM_DOCUMENT])
+
+    document_chapters = find_document_chapters_and_extract_texts(book)
     if pick_manually:
-        chapters = pick_chapters(book)
+        chapters = pick_chapters(document_chapters)
     else:
-        chapters = find_chapters(book)
+        chapters = find_chapters(document_chapters)
     print('Automatically selected chapters:', [c.get_name() for c in chapters])
-    texts = extract_texts(chapters)
+    texts = [c.extracted_text for c in chapters]
 
     has_ffmpeg = shutil.which('ffmpeg') is not None
     if not has_ffmpeg:
@@ -108,9 +110,12 @@ def gen_audio_segments(text, voice, speed):
     return audio_segments
 
 
-def extract_texts(chapters):
-    texts = []
-    for chapter in chapters:
+def find_document_chapters_and_extract_texts(book):
+    """Returns every chapter that is an ITEM_DOCUMENT and enriches each chapter with extracted_text."""
+    document_chapters = []
+    for chapter in book.get_items():
+        if chapter.get_type() != ebooklib.ITEM_DOCUMENT:
+            continue
         xml = chapter.get_body_content()
         soup = BeautifulSoup(xml, features='lxml')
         chapter_text = ''
@@ -119,38 +124,41 @@ def extract_texts(chapters):
             inner_text = child.text.strip() if child.text else ""
             if inner_text:
                 chapter_text += inner_text + '\n'
-        texts.append(chapter_text)
-    return texts
+        chapter.extracted_text = chapter_text
+        document_chapters.append(chapter)
+    return document_chapters
 
 
 def is_chapter(c):
     name = c.get_name().lower()
-    return bool(
+    has_min_len = len(c.get_body_content()) > 100
+    title_looks_like_chapter = bool(
         'chapter' in name.lower()
         or re.search(r'part\d{1,3}', name)
         or re.search(r'ch\d{1,3}', name)
         or re.search(r'chap\d{1,3}', name)
     )
+    return has_min_len and title_looks_like_chapter
 
 
-def find_chapters(book, verbose=False):
-    chapters = [c for c in book.get_items() if c.get_type() == ebooklib.ITEM_DOCUMENT and is_chapter(c)]
+def find_chapters(document_chapters, verbose=False):
+    chapters = [c for c in document_chapters if c.get_type() == ebooklib.ITEM_DOCUMENT and is_chapter(c)]
     if verbose:
-        for item in book.get_items():
+        for item in chapters:
             if item.get_type() == ebooklib.ITEM_DOCUMENT:
                 print(f"'{item.get_name()}'" + ', #' + str(len(item.get_body_content())))
     if len(chapters) == 0:
         print('Not easy to find the chapters, defaulting to all available documents.')
-        chapters = [c for c in book.get_items() if c.get_type() == ebooklib.ITEM_DOCUMENT]
+        chapters = [c for c in document_chapters if c.get_type() == ebooklib.ITEM_DOCUMENT]
     return chapters
 
 
-def pick_chapters(book):
-    all_chapters_names = [c.get_name() for c in book.get_items() if c.get_type() == ebooklib.ITEM_DOCUMENT]
+def pick_chapters(chapters):
+    all_chapters_names = [c.get_name() for c in chapters if c.get_type() == ebooklib.ITEM_DOCUMENT]
     title = 'Select which chapters to read in the audiobook'
     selected_chapters_names = pick(all_chapters_names, title, multiselect=True, min_selection_count=1)
     selected_chapters_names = [c[0] for c in selected_chapters_names]
-    selected_chapters = [c for c in book.get_items() if c.get_name() in selected_chapters_names]
+    selected_chapters = [c for c in chapters if c.get_name() in selected_chapters_names]
     return selected_chapters
 
 

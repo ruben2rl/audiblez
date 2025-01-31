@@ -35,6 +35,12 @@ class MainTest(unittest.TestCase):
             self.assertTrue(Path(f'orwell_chapter_{i}.wav').exists())
             self.assertTrue(Path(f'orwell_chapter_{i}.wav').stat().st_size > 300 * 1024, 'file should be larger than 300KB, surely failed')
 
+    def test_0_pirandello(self):
+        Path('pirandello.m4b').unlink(missing_ok=True)
+        os.system('rm pirandello_chapter_*.wav')
+        self.base(file_path='../epub/pirandello.epub', voice='im_nicola')
+        self.assertTrue(Path('pirandello.m4b').exists())
+
     def test_0_manzoni(self):
         Path('manzoni.m4b').unlink(missing_ok=True)
         os.system('rm manzoni_chapter_*.wav')
