@@ -15,7 +15,7 @@ jobs:
       - name: check it runs as script
         run: poetry run audiblez --help
       - name: install ffmpeg and espeak-ng
-        run: sudo apt-get install ffmpeg espeak-ng
+        run: sudo apt-get install ffmpeg espeak-ng --fix-missing
 #      - name: download test epub
 #        run: wget https://github.com/daisy/epub-accessibility-tests/releases/download/fundamental-2.0/Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.epub
 #      - name: create audiobook
