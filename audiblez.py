@@ -107,26 +107,6 @@ def gen_audio_segments(pipeline, text, voice, speed):
     return audio_segments
 
 
-def gen_audio_segments_raw(pipeline, text, voice, speed):
-    audio_segments = []
-
-    chunk_size = 5000  # Adjust chunk size as needed
-    # Fixed the text processing loop
-    remaining_text = text
-    while remaining_text:
-        chunk = remaining_text[:chunk_size]
-        remaining_text = remaining_text[chunk_size:]
-
-        # Process the chunk
-        chunk_segments = []
-        for gs, ps, audio in pipeline(chunk, voice=voice, speed=speed):
-            chunk_segments.append(audio)
-
-        if chunk_segments:  # Only append if we got valid audio segments
-            audio_segments.extend(chunk_segments)
-    return audio_segments
-
-
 def extract_texts(chapters):
     texts = []
     for chapter in chapters:
