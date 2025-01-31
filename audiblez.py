@@ -7,7 +7,6 @@ import sys
 import time
 import shutil
 import subprocess
-
 import numpy as np
 import soundfile
 import ebooklib
@@ -23,14 +22,9 @@ from pydub import AudioSegment
 from pick import pick
 from tempfile import NamedTemporaryFile
 
+from voices import voices, available_voices_str
+
 sample_rate = 24000
-voices = [
-    'af_alloy', 'af_aoede', 'af_bella', 'af_jessica', 'af_kore', 'af_nicole',
-    'af_nova', 'af_river', 'af_sarah', 'af_sky', 'am_adam', 'am_echo', 'am_eric',
-    'am_fenrir', 'am_liam', 'am_michael', 'am_onyx', 'am_puck', 'bf_alice',
-    'bf_emma', 'bf_isabella', 'bf_lily', 'bm_daniel', 'bm_fable',
-    'bm_george', 'bm_lewis'
-]
 
 
 def main(pipeline, file_path, voice, pick_manually, speed):
@@ -83,24 +77,9 @@ def main(pipeline, file_path, voice, pick_manually, speed):
         if i == 1:
             text = intro + '.\n\n' + text
         start_time = time.time()
-        audio_segments = []
-        chunk_size = 5000  # Adjust chunk size as needed
 
-        # Fixed the text processing loop
-        remaining_text = text
-        while remaining_text:
-            chunk = remaining_text[:chunk_size]
-            remaining_text = remaining_text[chunk_size:]
-            
-            # Process the chunk
-            chunk_segments = []
-            for gs, ps, audio in pipeline(chunk, voice=voice, speed=speed):
-                chunk_segments.append(audio)
-            
-            if chunk_segments:  # Only append if we got valid audio segments
-                audio_segments.extend(chunk_segments)
-
-        if audio_segments:  # Only concatenate if we have segments
+        audio_segments = gen_audio_segments(pipeline, text, voice, speed)
+        if audio_segments:
             final_audio = np.concatenate(audio_segments)
             soundfile.write(chapter_filename, final_audio, sample_rate)
             end_time = time.time()
@@ -119,6 +98,34 @@ def main(pipeline, file_path, voice, pick_manually, speed):
     if has_ffmpeg:
         create_index_file(title, by_creator, chapter_mp3_files)
         create_m4b(chapter_mp3_files, filename, cover_image)
+
+
+def gen_audio_segments(pipeline, text, voice, speed):
+    audio_segments = []
+    for gs, ps, audio in pipeline(text, voice=voice, speed=speed, split_pattern=r'\n+'):
+        audio_segments.append(audio)
+    return audio_segments
+
+
+def gen_audio_segments_raw(pipeline, text, voice, speed):
+    audio_segments = []
+
+    chunk_size = 5000  # Adjust chunk size as needed
+    # Fixed the text processing loop
+    remaining_text = text
+    while remaining_text:
+        chunk = remaining_text[:chunk_size]
+        remaining_text = remaining_text[chunk_size:]
+
+        # Process the chunk
+        chunk_segments = []
+        for gs, ps, audio in pipeline(chunk, voice=voice, speed=speed):
+            chunk_segments.append(audio)
+
+        if chunk_segments:  # Only append if we got valid audio segments
+            audio_segments.extend(chunk_segments)
+    return audio_segments
+
 
 def extract_texts(chapters):
     texts = []
@@ -239,10 +246,11 @@ def create_index_file(title, creator, chapter_mp3_files):
 
 def cli_main():
     voices_str = ', '.join(voices)
-    epilog = 'example:\n' + \
-             '  audiblez book.epub -l en-us -v af_sky'
-    default_voice = 'af_sky' if 'af_sky' in voices else voices[0]
-
+    epilog = ('example:\n' +
+              '  audiblez book.epub -l en-us -v af_sky\n\n' +
+              'available voices:\n' +
+              available_voices_str)
+    default_voice = 'af_sky'
     parser = argparse.ArgumentParser(epilog=epilog, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('epub_file_path', help='Path to the epub file')
     parser.add_argument('-v', '--voice', default=default_voice, help=f'Choose narrating voice: {voices_str}')
