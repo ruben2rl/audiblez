@@ -69,7 +69,7 @@ The first letter is the language code and the second is the gender of the speake
 
 ## How to run on GPU
 
-By default audiblez runs on CPU. If you pass the option `--cuda` it will try to use the Cuda device via Torch.
+By default, audiblez runs on CPU. If you pass the option `--cuda` it will try to use the Cuda device via Torch.
 
 Check out this example: [Audiblez running on a Google Colab Notebook with Cuda ](https://colab.research.google.com/drive/164PQLowogprWQpRjKk33e-8IORAvqXKI?usp=sharing]).
 
