@@ -5,7 +5,7 @@
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/audiblez)
 ![PyPI - Version](https://img.shields.io/pypi/v/audiblez)
 
-### v3.1 Now with CUDA support and many more languages!
+### v3 Now with CUDA support and many more languages!
 
 Audiblez generates `.m4b` audiobooks from regular `.epub` e-books,
 using Kokoro's high-quality speech synthesis.
