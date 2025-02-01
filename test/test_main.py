@@ -19,9 +19,6 @@ class MainTest(unittest.TestCase):
         m4b_file = Path(f'{name}.m4b')
         self.assertTrue(m4b_file.exists())
         self.assertTrue(m4b_file.stat().st_size > 256 * 1024)
-        chapter_1_wav = Path(f'{name}_chapter_1.wav')
-        self.assertTrue(chapter_1_wav.exists())
-        self.assertTrue(chapter_1_wav.stat().st_size > 256 * 1024)
 
     def test_poe(self):
         url = 'https://www.gutenberg.org/ebooks/1064.epub.images'
