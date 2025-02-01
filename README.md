@@ -77,6 +77,14 @@ Check out this example: [Audiblez running on a Google Colab Notebook with Cuda ]
 
 We don't currently support Apple Silicon, as there is not yet a Kokoro implementation in MLX. As soon as it will be available, we will support it.
 
+## Manually pick chapters to convert
+
+Sometimes you want to manually select which chapters/sections in the e-book to read out loud.
+To do so, you can use `--pick` to interactively choose the chapters to convert.
+
+```bash
+
+
 ## Author
 
 by [Claudio Santini](https://claudio.uk) in 2025, distributed under MIT licence.
