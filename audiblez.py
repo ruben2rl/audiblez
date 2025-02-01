@@ -105,6 +105,7 @@ def main(file_path, voice, pick_manually, speed, max_chapters=None):
         create_index_file(title, creator, chapter_wav_files)
         create_m4b(chapter_wav_files, filename, cover_image)
 
+
 def find_cover(book):
     def is_image(item):
         return item is not None and item.media_type.startswith('image/')
@@ -126,6 +127,7 @@ def find_cover(book):
             return item
 
     return None
+
 
 def print_selected_chapters(document_chapters, chapters):
     print(tabulate([
@@ -299,6 +301,10 @@ def cli_main():
             torch.set_default_device('cuda')
         else:
             print('CUDA GPU not available. Defaulting to CPU')
+
+    if not spacy.util.is_package("en_core_web_sm"):
+        print("Downloading Spacy model 'en_core_web_sm'...")
+        spacy.cli.download("en_core_web_sm")
 
     main(args.epub_file_path, args.voice, args.pick, args.speed)
 
