@@ -30,9 +30,9 @@ sample_rate = 24000
 
 
 def main(file_path, voice, pick_manually, speed, max_chapters=None):
-    if not spacy.util.is_package("en_core_web_sm"):
-        print("Downloading Spacy model 'en_core_web_sm'...")
-        spacy.cli.download("en_core_web_sm")
+    if not spacy.util.is_package("xx_ent_wiki_sm"):
+        print("Downloading Spacy model xx_ent_wiki_sm...")
+        spacy.cli.download("xx_ent_wiki_sm")
     filename = Path(file_path).name
     book = epub.read_epub(file_path)
     meta_title = book.get_metadata('DC', 'title')
@@ -50,11 +50,11 @@ def main(file_path, voice, pick_manually, speed, max_chapters=None):
 
     document_chapters = find_document_chapters_and_extract_texts(book)
     if pick_manually is True:
-        chapters = pick_chapters(document_chapters)
+        selected_chapters = pick_chapters(document_chapters)
     else:
-        chapters = find_good_chapters(document_chapters)
-    print_selected_chapters(document_chapters, chapters)
-    texts = [c.extracted_text for c in chapters]
+        selected_chapters = find_good_chapters(document_chapters)
+    print_selected_chapters(document_chapters, selected_chapters)
+    texts = [c.extracted_text for c in selected_chapters]
 
     has_ffmpeg = shutil.which('ffmpeg') is not None
     if not has_ffmpeg:
@@ -68,9 +68,11 @@ def main(file_path, voice, pick_manually, speed, max_chapters=None):
     print(f'Estimated time remaining (assuming {chars_per_sec} chars/sec): {strfdelta((total_chars - processed_chars) / chars_per_sec)}')
 
     chapter_wav_files = []
-    for i, text in enumerate(texts, start=1):
+    for i, chapter in enumerate(selected_chapters, start=1):
         if max_chapters and i > max_chapters: break
-        chapter_filename = filename.replace('.epub', f'_chapter_{i}.wav')
+        text = chapter.extracted_text
+        xhtml_file_name = chapter.get_name().replace(' ', '_').replace('/', '_').replace('\\', '_')
+        chapter_filename = filename.replace('.epub', f'_chapter_{i}_{voice}_{xhtml_file_name}.wav')
         chapter_wav_files.append(chapter_filename)
         if Path(chapter_filename).exists():
             print(f'File for chapter {i} already exists. Skipping')

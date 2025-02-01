@@ -28,9 +28,8 @@ You also need `espeak-ng` and `ffmpeg` installed on your machine:
 ```bash
 pip install audiblez
 
-sudo apt install ffmpeg espeak-ng     # on Ubuntu/Debian
-
-brew install ffmpeg espeak-ng         # on Mac
+sudo apt install ffmpeg espeak-ng     # on Ubuntu/Debian 🐧
+brew install ffmpeg espeak-ng         # on Mac 🍏
 ```
 
 Then, to convert an epub file into an audiobook, just run:
@@ -54,15 +53,23 @@ audiblez book.epub -v af_sky -s 1.5
 
 ## Supported Voices
 
-Use `-v` option to specify the voice to use. Available voices are listed here, the ones that start with "a" are American, the ones that start with "b" are British:
+Use `-v` option to specify the voice to use. Available voices are listed here. 
+the first letter is the language code and the second is the gender of the speaker e.g. `im_nicola` is an italian male voice.
 
-`af_alloy, af_aoede, af_bella, af_jessica, af_kore, af_nicole, af_nova, af_river, af_sarah, af_sky, am_adam, am_echo, am_eric, am_fenrir, am_liam, am_michael, am_onyx, am_puck, bf_alice, bf_emma, bf_isabella, bf_lily, bm_daniel, bm_fable, bm_george, bm_lewis`
+| Language | Voices |
+|----------|--------|
+| 🇺🇸 | `af_alloy`, `af_aoede`, `af_bella`, `af_heart`, `af_jessica`, `af_kore`, `af_nicole`, `af_nova`, `af_river`, `af_sarah`, `af_sky`, `am_adam`, `am_echo`, `am_eric`, `am_fenrir`, `am_liam`, `am_michael`, `am_onyx`, `am_puck`, `am_santa` |
+| 🇬🇧 | `bf_alice`, `bf_emma`, `bf_isabella`, `bf_lily`, `bm_daniel`, `bm_fable`, `bm_george`, `bm_lewis` |
+| 🇪🇸 | `ef_dora`, `em_alex`, `em_santa` |
+| 🇫🇷 | `ff_siwis` |
+| 🇮🇳 | `hf_alpha`, `hf_beta`, `hm_omega`, `hm_psi` |
+| 🇮🇹 | `if_sara`, `im_nicola` |
+| 🇯🇵 | `jf_alpha`, `jf_gongitsune`, `jf_nezumi`, `jf_tebukuro`, `jm_kumo` |
+| 🇧🇷 | `pf_dora`, `pm_alex`, `pm_santa` |
+| 🇨🇳 | `zf_xiaobei`, `zf_xiaoni`, `zf_xiaoxiao`, `zf_xiaoyi`, `zm_yunjian`, `zm_yunxi`, `zm_yunxia`, `zm_yunyang` |
 
-You can try them here: [https://huggingface.co/spaces/hexgrad/Kokoro-TTS](https://huggingface.co/spaces/hexgrad/Kokoro-TTS)
 
 ## How to run on GPU
-
-Experimental support for Cuda is available b
 
 By default audiblez runs on CPU. If you pass the option `--cuda` it will try to use the Cuda device via Torch.
 

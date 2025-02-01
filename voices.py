@@ -61,3 +61,7 @@ voices = {
 
 available_voices_str = ('\n'.join([f'  {flags[lang]} {", ".join(voices[lang])}' for lang in voices])
                         .replace(' af_sky,', '\n       af_sky,'))
+
+# for key, l in voices.items():
+#     ls = ', '.join([f'`{j}`' for j in l])
+#     print(f'| {flags[key]} | {ls} |')
