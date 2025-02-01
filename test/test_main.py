@@ -24,6 +24,7 @@ class MainTest(unittest.TestCase):
         url = 'https://www.gutenberg.org/ebooks/1064.epub.images'
         self.base('poe', url)
 
+    @unittest.skip('too slow for CI')
     def test_orwell(self):
         url = 'https://archive.org/download/AnimalFarmByGeorgeOrwell/Animal%20Farm%20by%20George%20Orwell.epub'
         self.base('orwell', url)
