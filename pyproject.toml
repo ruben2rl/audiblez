@@ -1,6 +1,6 @@
 [project]
 name = "audiblez"
-version = "0.3.2"
+version = "0.3.3"
 description = "Generate audiobooks from e-books (epub to wav/m4b)"
 authors = [
     { name = "Claudio Santini", email = "hireclaudio@gmail.com" }
@@ -14,7 +14,7 @@ dependencies = [
     "pick (>=2.4.0,<3.0.0)",
     "bs4 (>=0.0.2,<0.0.3)",
     "pydub (>=0.25.1,<0.26.0)",
-    "spacy (>=3.8.4,<4.0.0)",
+    "spacy (>=3.8.3,<4.0.0)",
     "yaspin (>=3.1.0,<4.0.0)"
 ]
 
