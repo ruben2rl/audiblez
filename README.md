@@ -54,7 +54,7 @@ audiblez book.epub -v af_sky -s 1.5
 ## Supported Voices
 
 Use `-v` option to specify the voice to use. Available voices are listed here. 
-the first letter is the language code and the second is the gender of the speaker e.g. `im_nicola` is an italian male voice.
+The first letter is the language code and the second is the gender of the speaker e.g. `im_nicola` is an italian male voice.
 
 | Language | Voices |
 |----------|--------|
