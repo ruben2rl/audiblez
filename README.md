@@ -82,8 +82,6 @@ We don't currently support Apple Silicon, as there is not yet a Kokoro implement
 Sometimes you want to manually select which chapters/sections in the e-book to read out loud.
 To do so, you can use `--pick` to interactively choose the chapters to convert.
 
-```bash
-
 
 ## Author
 
