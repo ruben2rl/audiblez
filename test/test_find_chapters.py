@@ -4,7 +4,7 @@ from ebooklib import epub
 from audiblez import find_good_chapters, find_document_chapters_and_extract_texts
 
 
-@unittest.skip()
+@unittest.skip('Development only, not for CI')
 class FindChaptersTest(unittest.TestCase):
     def base(self, file, expected_chapter_names):
         book = epub.read_epub(file)
