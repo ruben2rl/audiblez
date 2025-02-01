@@ -30,6 +30,9 @@ sample_rate = 24000
 
 
 def main(file_path, voice, pick_manually, speed, max_chapters=None):
+    if not spacy.util.is_package("en_core_web_sm"):
+        print("Downloading Spacy model 'en_core_web_sm'...")
+        spacy.cli.download("en_core_web_sm")
     filename = Path(file_path).name
     book = epub.read_epub(file_path)
     meta_title = book.get_metadata('DC', 'title')
@@ -301,10 +304,6 @@ def cli_main():
             torch.set_default_device('cuda')
         else:
             print('CUDA GPU not available. Defaulting to CPU')
-
-    if not spacy.util.is_package("en_core_web_sm"):
-        print("Downloading Spacy model 'en_core_web_sm'...")
-        spacy.cli.download("en_core_web_sm")
 
     main(args.epub_file_path, args.voice, args.pick, args.speed)
 
