@@ -34,6 +34,7 @@ class MainTest(unittest.TestCase):
         self.base('pirandello', url, voice='im_nicola')
         self.assertTrue(Path('pirandello.m4b').exists())
 
+    @unittest.skip('too slow for CI')
     def test_italian_manzoni(self):
         url = 'https://www.liberliber.eu/mediateca/libri/m/manzoni/i_promessi_sposi/epub/manzoni_i_promessi_sposi.epub'
         self.base('manzoni', url, voice='im_nicola', max_chapters=1)
