@@ -37,10 +37,10 @@ def main(file_path, voice, pick_manually, speed, max_chapters=None):
     meta_creator = book.get_metadata('DC', 'creator')
     creator = meta_creator[0][0] if meta_creator else ''
 
-    cover_maybe = [c for c in book.get_items() if c.get_type() == ebooklib.ITEM_COVER]
-    cover_image = cover_maybe[0].get_content() if cover_maybe else b""
+    cover_maybe = find_cover(book)
+    cover_image = cover_maybe.get_content() if cover_maybe else b""
     if cover_maybe:
-        print(f'Found cover image {cover_maybe[0].file_name} in {cover_maybe[0].media_type} format')
+        print(f'Found cover image {cover_maybe.file_name} in {cover_maybe.media_type} format')
 
     intro = f'{title} – {creator}.\n\n'
     print(intro)
@@ -105,6 +105,27 @@ def main(file_path, voice, pick_manually, speed, max_chapters=None):
         create_index_file(title, creator, chapter_wav_files)
         create_m4b(chapter_wav_files, filename, cover_image)
 
+def find_cover(book):
+    def is_image(item):
+        return item is not None and item.media_type.startswith('image/')
+
+    for item in book.get_items_of_type(ebooklib.ITEM_COVER):
+        if is_image(item):
+            return item
+
+    # https://idpf.org/forum/topic-715
+    for meta in book.get_metadata('OPF', 'cover'):
+        if is_image(item := book.get_item_with_id(meta[1]['content'])):
+            return item
+
+    if is_image(item := book.get_item_with_id('cover')):
+        return item
+
+    for item in book.get_items_of_type(ebooklib.ITEM_IMAGE):
+        if 'cover' in item.get_name().lower() and is_image(item):
+            return item
+
+    return None
 
 def print_selected_chapters(document_chapters, chapters):
     print(tabulate([
