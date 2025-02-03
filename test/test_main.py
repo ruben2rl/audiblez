@@ -42,3 +42,7 @@ class MainTest(unittest.TestCase):
     def test_french_baudelaire(self):
         url = 'http://gallica.bnf.fr/ark:/12148/bpt6k70861t.epub'
         self.base('baudelaire', url, voice='ff_siwis')
+
+    def test_chinese(self):
+        url = 'https://www.gutenberg.org/ebooks/24225.epub3.images'
+        self.base('chinese', url, voice='zf_xiaobei')
