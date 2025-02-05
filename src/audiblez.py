@@ -2,13 +2,11 @@
 # audiblez - A program to convert e-books into audiobooks using
 # Kokoro-82M model for high-quality text-to-speech synthesis.
 # by Claudio Santini 2025 - https://claudio.uk
-import torch
+import torch.cuda
 import spacy
 import ebooklib
 import soundfile
 import numpy as np
-import argparse
-import sys
 import time
 import shutil
 import subprocess
@@ -27,10 +25,14 @@ from tempfile import NamedTemporaryFile
 sample_rate = 24000
 
 
-def main(file_path, voice, pick_manually, speed, max_chapters=None):
+def load_spacy():
     if not spacy.util.is_package("xx_ent_wiki_sm"):
         print("Downloading Spacy model xx_ent_wiki_sm...")
         spacy.cli.download("xx_ent_wiki_sm")
+
+
+def main(file_path, voice, pick_manually, speed, max_chapters=None, selected_chapters=None):
+    load_spacy()
     filename = Path(file_path).name
     book = epub.read_epub(file_path)
     meta_title = book.get_metadata('DC', 'title')
@@ -47,10 +49,11 @@ def main(file_path, voice, pick_manually, speed, max_chapters=None):
     print(intro)
 
     document_chapters = find_document_chapters_and_extract_texts(book)
-    if pick_manually is True:
-        selected_chapters = pick_chapters(document_chapters)
-    else:
-        selected_chapters = find_good_chapters(document_chapters)
+    if not selected_chapters:
+        if pick_manually is True:
+            selected_chapters = pick_chapters(document_chapters)
+        else:
+            selected_chapters = find_good_chapters(document_chapters)
     print_selected_chapters(document_chapters, selected_chapters)
     texts = [c.extracted_text for c in selected_chapters]
 
@@ -145,7 +148,7 @@ def gen_audio_segments(pipeline, text, voice, speed):
     audio_segments = []
     doc = nlp(text)
     sentences = list(doc.sents)
-    for sent in sentences:
+    for i, sent in enumerate(sentences):
         for gs, ps, audio in pipeline(sent.text, voice=voice, speed=speed, split_pattern=r'\n\n\n'):
             audio_segments.append(audio)
     return audio_segments
@@ -277,56 +280,3 @@ def create_index_file(title, creator, chapter_mp3_files):
             f.write(f"[CHAPTER]\nTIMEBASE=1/1000\nSTART={start}\nEND={end}\ntitle=Chapter {i}\n\n")
             i += 1
             start = end
-
-
-def cli_main():
-    voices_str = ', '.join(voices)
-    epilog = ('example:\n' +
-              '  audiblez book.epub -l en-us -v af_sky\n\n' +
-              'available voices:\n' +
-              available_voices_str)
-    default_voice = 'af_sky'
-    parser = argparse.ArgumentParser(epilog=epilog, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('epub_file_path', help='Path to the epub file')
-    parser.add_argument('-v', '--voice', default=default_voice, help=f'Choose narrating voice: {voices_str}')
-    parser.add_argument('-p', '--pick', default=False, help=f'Interactively select which chapters to read in the audiobook', action='store_true')
-    parser.add_argument('-s', '--speed', default=1.0, help=f'Set speed from 0.5 to 2.0', type=float)
-    parser.add_argument('-c', '--cuda', default=False, help=f'Use GPU via Cuda in Torch if available', action='store_true')
-
-    if len(sys.argv) == 1:
-        parser.print_help(sys.stderr)
-        sys.exit(1)
-    args = parser.parse_args()
-
-    if args.cuda:
-        if torch.cuda.is_available():
-            print('CUDA GPU available')
-            torch.set_default_device('cuda')
-        else:
-            print('CUDA GPU not available. Defaulting to CPU')
-
-    main(args.epub_file_path, args.voice, args.pick, args.speed)
-
-
-flags = {'a': '🇺🇸', 'b': '🇬🇧', 'e': '🇪🇸', 'f': '🇫🇷', 'h': '🇮🇳', 'i': '🇮🇹', 'j': '🇯🇵', 'p': '🇧🇷', 'z': '🇨🇳'}
-
-voices = {
-    'a': ['af_alloy', 'af_aoede', 'af_bella', 'af_heart', 'af_jessica', 'af_kore', 'af_nicole', 'af_nova',
-          'af_river', 'af_sarah', 'af_sky', 'am_adam', 'am_echo', 'am_eric', 'am_fenrir', 'am_liam',
-          'am_michael', 'am_onyx', 'am_puck', 'am_santa'],
-    'b': ['bf_alice', 'bf_emma', 'bf_isabella', 'bf_lily', 'bm_daniel', 'bm_fable', 'bm_george', 'bm_lewis'],
-    'e': ['ef_dora', 'em_alex', 'em_santa'],
-    'f': ['ff_siwis'],
-    'h': ['hf_alpha', 'hf_beta', 'hm_omega', 'hm_psi'],
-    'i': ['if_sara', 'im_nicola'],
-    'j': ['jf_alpha', 'jf_gongitsune', 'jf_nezumi', 'jf_tebukuro', 'jm_kumo'],
-    'p': ['pf_dora', 'pm_alex', 'pm_santa'],
-    'z': ['zf_xiaobei', 'zf_xiaoni', 'zf_xiaoxiao', 'zf_xiaoyi', 'zm_yunjian', 'zm_yunxi', 'zm_yunxia',
-          'zm_yunyang']
-}
-
-available_voices_str = ('\n'.join([f'  {flags[lang]} {", ".join(voices[lang])}' for lang in voices])
-                        .replace(' af_sky,', '\n       af_sky,'))
-
-if __name__ == '__main__':
-    cli_main()
