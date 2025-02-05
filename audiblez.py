@@ -43,9 +43,6 @@ def main(file_path, voice, pick_manually, speed, max_chapters=None):
     if cover_maybe:
         print(f'Found cover image {cover_maybe.file_name} in {cover_maybe.media_type} format')
 
-    intro = f'{title} – {creator}.\n\n'
-    print(intro)
-
     document_chapters = find_document_chapters_and_extract_texts(book)
     if pick_manually is True:
         selected_chapters = pick_chapters(document_chapters)
@@ -80,7 +77,8 @@ def main(file_path, voice, pick_manually, speed, max_chapters=None):
             chapter_wav_files.remove(chapter_filename)
             continue
         if i == 1:
-            text = intro + '.\n\n' + text
+            # add intro text
+            text = f'{title} – {creator}.\n\n' + text
         start_time = time.time()
         pipeline = KPipeline(lang_code=voice[0])  # a for american or b for british etc.
 
@@ -159,13 +157,12 @@ def find_document_chapters_and_extract_texts(book):
             continue
         xml = chapter.get_body_content()
         soup = BeautifulSoup(xml, features='lxml')
-        chapter_text = ''
+        chapter.extracted_text = ''
         html_content_tags = ['title', 'p', 'h1', 'h2', 'h3', 'h4', 'li']
-        for child in soup.find_all(html_content_tags):
-            inner_text = child.text.strip() if child.text else ""
-            if inner_text:
-                chapter_text += inner_text + '\n'
-        chapter.extracted_text = chapter_text
+        for text in [c.text.strip() for c in soup.find_all(html_content_tags) if c.text]:
+            if not text.endswith('.'):
+                text += '.'
+            chapter.extracted_text += text + '\n'
         document_chapters.append(chapter)
     return document_chapters
 
