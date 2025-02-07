@@ -218,7 +218,7 @@ class MainWindow(wx.Frame):
         print(f"Opening file: {file_path}")  # Do something with the filepath (e.g., parse the EPUB)
 
         from ebooklib import epub
-        from audiblez import find_document_chapters_and_extract_texts, find_good_chapters, find_cover
+        from core import find_document_chapters_and_extract_texts, find_good_chapters, find_cover
         book = epub.read_epub(file_path)
         meta_title = book.get_metadata('DC', 'title')
         title = meta_title[0][0] if meta_title else ''
@@ -394,7 +394,7 @@ class TableCtrl(wx.ListCtrl, listmix.ColumnSorterMixin, listmix.CheckListCtrlMix
         return self
 
 
-if __name__ == '__main__':
+def main():
     print('starting...')
     app = wx.App(False)
     frame = MainWindow(None, "Audiblez - Generate Audiobooks from E-books")
@@ -402,3 +402,7 @@ if __name__ == '__main__':
     frame.Layout()
     app.SetTopWindow(frame)
     app.MainLoop()
+
+
+if __name__ == '__main__':
+    main()

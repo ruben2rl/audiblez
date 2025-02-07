@@ -31,7 +31,7 @@ def load_spacy():
         spacy.cli.download("xx_ent_wiki_sm")
 
 
-def main(file_path, voice, pick_manually, speed, max_chapters=None, selected_chapters=None):
+def main(file_path, voice, pick_manually, speed, max_chapters=None, max_sentences=None, selected_chapters=None):
     load_spacy()
     filename = Path(file_path).name
     book = epub.read_epub(file_path)
@@ -88,7 +88,7 @@ def main(file_path, voice, pick_manually, speed, max_chapters=None, selected_cha
         pipeline = KPipeline(lang_code=voice[0])  # a for american or b for british etc.
 
         with yaspin(text=f'Reading chapter {i} ({len(text):,} characters)...', color="yellow") as spinner:
-            audio_segments = gen_audio_segments(pipeline, text, voice, speed)
+            audio_segments = gen_audio_segments(pipeline, text, voice, speed, max_sentences=max_sentences)
             if audio_segments:
                 final_audio = np.concatenate(audio_segments)
                 soundfile.write(chapter_filename, final_audio, sample_rate)
@@ -142,13 +142,14 @@ def print_selected_chapters(document_chapters, chapters):
     ], headers=['#', 'Chapter', 'Text Length', 'Selected', 'First words']))
 
 
-def gen_audio_segments(pipeline, text, voice, speed):
+def gen_audio_segments(pipeline, text, voice, speed, max_sentences=None):
     nlp = spacy.load('xx_ent_wiki_sm')
     nlp.add_pipe('sentencizer')
     audio_segments = []
     doc = nlp(text)
     sentences = list(doc.sents)
     for i, sent in enumerate(sentences):
+        if max_sentences and i > max_sentences: break
         for gs, ps, audio in pipeline(sent.text, voice=voice, speed=speed, split_pattern=r'\n\n\n'):
             audio_segments.append(audio)
     return audio_segments

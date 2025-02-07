@@ -31,9 +31,13 @@ def cli_main():
         else:
             print('CUDA GPU not available. Defaulting to CPU')
 
-    from audiblez import main
+    from core import main
     main(args.epub_file_path, args.voice, args.pick, args.speed)
 
 
 if __name__ == '__main__':
-    cli_main()
+    if len(sys.argv) == 1:
+        from ui import main
+        main()
+    else:
+        cli_main()
