@@ -5,6 +5,10 @@ from voices import voices, available_voices_str
 
 
 def cli_main():
+    if len(sys.argv) == 1:
+        from ui import main
+        return main()
+
     voices_str = ', '.join(voices)
     epilog = ('example:\n' +
               '  audiblez book.epub -l en-us -v af_sky\n\n' +
@@ -17,6 +21,7 @@ def cli_main():
     parser.add_argument('-p', '--pick', default=False, help=f'Interactively select which chapters to read in the audiobook', action='store_true')
     parser.add_argument('-s', '--speed', default=1.0, help=f'Set speed from 0.5 to 2.0', type=float)
     parser.add_argument('-c', '--cuda', default=False, help=f'Use GPU via Cuda in Torch if available', action='store_true')
+    parser.add_argument('-g', '--gui', default=False, help=f'Run graphical application instead of command line', action='store_true')
 
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
@@ -36,8 +41,4 @@ def cli_main():
 
 
 if __name__ == '__main__':
-    if len(sys.argv) == 1:
-        from ui import main
-        main()
-    else:
-        cli_main()
+    cli_main()

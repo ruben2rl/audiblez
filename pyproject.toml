@@ -16,7 +16,8 @@ dependencies = [
     "spacy (>=3.8.3,<4.0.0)",
     "yaspin (>=3.1.0,<4.0.0)",
     "kokoro (>=0.7.9,<0.8.0)",
-    "misaki[zh] (>=0.7.10,<0.8.0)"
+    "misaki[zh] (>=0.7.10,<0.8.0)",
+    "wxpython (>=4.2.2,<5.0.0)"
 ]
 
 
@@ -31,7 +32,7 @@ Repository = "https://github.com/santinic/audiblez"
 Issues = "https://github.com/santinic/audiblez/issues"
 
 [project.scripts]
-audiblez = "audiblez:cli_main"
+audiblez = "audiblez.cli:cli_main"
 
 [tool.poetry.group.dev.dependencies]
 deptry = "^0.23.0"

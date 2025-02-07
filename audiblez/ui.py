@@ -23,7 +23,7 @@ class MainWindow(wx.Frame):
         self.create_layout()
         self.Centre()
         self.Show(True)
-        self.open_epub('./epub/dragon.epub')
+        # self.open_epub('./epub/dragon.epub')
 
     def create_menu(self):
         menubar = wx.MenuBar()
