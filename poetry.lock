@@ -914,20 +914,20 @@ referencing = ">=0.31.0"
 
 [[package]]
 name = "kokoro"
-version = "0.3.5"
+version = "0.7.9"
 description = "TTS"
 optional = false
 python-versions = ">=3.7"
 groups = ["main"]
 files = [
-    {file = "kokoro-0.3.5-py3-none-any.whl", hash = "sha256:995c2284c13b49657df4280cda171ce03442b223ac97d3ca63f9a914b246a4ca"},
-    {file = "kokoro-0.3.5.tar.gz", hash = "sha256:9eb456a8c005f7bfae4756b9718f0a39dd8a1216092e52d17a568e106c02f278"},
+    {file = "kokoro-0.7.9-py3-none-any.whl", hash = "sha256:de2f4826daaca48da3b9d63d232e47db35047548029d0aae30c40aee3af90b5d"},
+    {file = "kokoro-0.7.9.tar.gz", hash = "sha256:62b32422b8985303d7c0e30a2465945ac896a1070d01e4cd5bd8f95f9bd4c73f"},
 ]
 
 [package.dependencies]
 huggingface-hub = "*"
 loguru = "*"
-misaki = {version = ">=0.6.7", extras = ["en"]}
+misaki = {version = ">=0.7.9", extras = ["en"]}
 numpy = "1.26.4"
 scipy = "*"
 torch = "*"
@@ -3350,4 +3350,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9,<3.13"
-content-hash = "a658caadd28431d149efc7a203f344f5e804eccd501aeb2c8a7489104543f51f"
+content-hash = "829044f7303c59761717b50cc1346c3a0799d0d75442cec322b65f0d3fcc3bac"
