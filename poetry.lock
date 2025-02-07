@@ -675,6 +675,22 @@ lxml = "*"
 six = "*"
 
 [[package]]
+name = "espeakng-loader"
+version = "0.2.4"
+description = "A Python package that provides shared library loader for eSpeak NG"
+optional = false
+python-versions = ">=3.6"
+groups = ["main"]
+files = [
+    {file = "espeakng_loader-0.2.4-py3-none-macosx_10_12_x86_64.whl", hash = "sha256:b77477ae2ddf62a748e04e49714eabb2f3a24f344166200b00539083bd669904"},
+    {file = "espeakng_loader-0.2.4-py3-none-macosx_11_0_arm64.whl", hash = "sha256:d27cdca31112226e7299d8562e889d3e38a1e48055c9ee381b45d669072ee59f"},
+    {file = "espeakng_loader-0.2.4-py3-none-manylinux_2_17_x86_64.manylinux2014_x86_64.whl", hash = "sha256:08721baf27d13d461f6be6eed9a65277e70d68234ff484fd8b9897b222cdcb6d"},
+    {file = "espeakng_loader-0.2.4-py3-none-manylinux_2_28_aarch64.whl", hash = "sha256:d1e798141b46a050cdb75fcf3c17db969bb2c40394f3f4a48910655d547508b9"},
+    {file = "espeakng_loader-0.2.4-py3-none-win_amd64.whl", hash = "sha256:41f1e08ac9deda2efd1ea9de0b81dab9f5ae3c4b24284f76533d0a7b1dd7abd7"},
+    {file = "espeakng_loader-0.2.4-py3-none-win_arm64.whl", hash = "sha256:d7a2928843eaeb2df82f99a370f44e8a630f59b02f9b0d1f168a03c4eeb76b89"},
+]
+
+[[package]]
 name = "filelock"
 version = "3.17.0"
 description = "A platform independent file lock."
@@ -1325,29 +1341,30 @@ files = [
 
 [[package]]
 name = "misaki"
-version = "0.6.7"
+version = "0.7.10"
 description = "G2P engine for TTS"
 optional = false
-python-versions = ">=3.7"
+python-versions = "<3.13,>=3.8"
 groups = ["main"]
 files = [
-    {file = "misaki-0.6.7-py3-none-any.whl", hash = "sha256:66a74d5ece8e882315ddf97f5ac4260b77ad52a8d038a54b1f0b366943eee782"},
-    {file = "misaki-0.6.7.tar.gz", hash = "sha256:47233eb86623f615301dba24863bece9a21d969fc7ec46e035ce09995e8bde67"},
+    {file = "misaki-0.7.10-py3-none-any.whl", hash = "sha256:1a85bdfa50f21f1ea0ac6744030fe99851a8933cadcaad80e9b84caa4e600b66"},
+    {file = "misaki-0.7.10.tar.gz", hash = "sha256:5457bb829e8b88678c788bd76abffcce15747cbb73443b73419249f63dd8c91b"},
 ]
 
 [package.dependencies]
 cn2an = {version = "*", optional = true, markers = "extra == \"zh\""}
+espeakng-loader = {version = "*", optional = true, markers = "extra == \"en\""}
 jieba = {version = "*", optional = true, markers = "extra == \"zh\""}
 num2words = {version = "*", optional = true, markers = "extra == \"en\""}
 ordered-set = {version = "*", optional = true, markers = "extra == \"zh\""}
-phonemizer = {version = "*", optional = true, markers = "extra == \"en\""}
+phonemizer-fork = {version = "*", optional = true, markers = "extra == \"en\""}
 pypinyin = {version = "*", optional = true, markers = "extra == \"zh\""}
 regex = "*"
 spacy = {version = "*", optional = true, markers = "extra == \"en\""}
 spacy-curated-transformers = {version = "*", optional = true, markers = "extra == \"en\""}
 
 [package.extras]
-en = ["num2words", "phonemizer", "spacy", "spacy-curated-transformers"]
+en = ["espeakng-loader", "num2words", "phonemizer-fork", "spacy", "spacy-curated-transformers"]
 ja = ["fugashi", "jaconv", "mojimoji", "unidic-lite"]
 ko = ["g2pk2"]
 vi = ["num2words", "spacy", "spacy-curated-transformers", "underthesea"]
@@ -1718,15 +1735,15 @@ files = [
 ]
 
 [[package]]
-name = "phonemizer"
-version = "3.3.0"
+name = "phonemizer-fork"
+version = "3.3.2"
 description = "Simple text to phones converter for multiple languages"
 optional = false
 python-versions = ">=3.8"
 groups = ["main"]
 files = [
-    {file = "phonemizer-3.3.0-py3-none-any.whl", hash = "sha256:17afaa98691fe73b025dd8d8727b0e67cc376c5e7ee27590853e457fb3f43602"},
-    {file = "phonemizer-3.3.0.tar.gz", hash = "sha256:5e0c38122effe0b331a24e674aff256874ece169d70a9cf1120337b56f8e3d0c"},
+    {file = "phonemizer_fork-3.3.2-py3-none-any.whl", hash = "sha256:97305c76f4183b3825dae8f4c032265fe78c9946ce58c47d4b62161349264b74"},
+    {file = "phonemizer_fork-3.3.2.tar.gz", hash = "sha256:10e16e827d0443b087062e21b55e805c00989cf1343b2e81e734cae5f6c0cf69"},
 ]
 
 [package.dependencies]
@@ -3333,4 +3350,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9,<3.13"
-content-hash = "4457fbca8c8a609edea72cf65137b4a5c5ea501bd50744cb35706cdc277b3746"
+content-hash = "a658caadd28431d149efc7a203f344f5e804eccd501aeb2c8a7489104543f51f"
