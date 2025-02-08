@@ -20,7 +20,6 @@ from kokoro import KPipeline
 from ebooklib import epub
 from pydub import AudioSegment
 from pick import pick
-from tempfile import NamedTemporaryFile
 
 sample_rate = 24000
 
@@ -31,8 +30,13 @@ def load_spacy():
         spacy.cli.download("xx_ent_wiki_sm")
 
 
-def main(file_path, voice, pick_manually, speed, max_chapters=None, max_sentences=None, selected_chapters=None):
+def main(file_path, voice, pick_manually, speed, output_folder='.',
+         max_chapters=None, max_sentences=None, selected_chapters=None):
     load_spacy()
+
+    if output_folder != '.':
+        Path(output_folder).mkdir(parents=True, exist_ok=True)
+
     filename = Path(file_path).name
     book = epub.read_epub(file_path)
     meta_title = book.get_metadata('DC', 'title')
@@ -63,21 +67,22 @@ def main(file_path, voice, pick_manually, speed, max_chapters=None, max_sentence
     print(f'Total characters: {total_chars:,}')
     print('Total words:', len(' '.join(texts).split()))
     chars_per_sec = 500 if torch.cuda.is_available() else 50
-    print(f'Estimated time remaining (assuming {chars_per_sec} chars/sec): {strfdelta((total_chars - processed_chars) / chars_per_sec)}')
+    eta = strfdelta((total_chars - processed_chars) / chars_per_sec)
+    print(f'Estimated time remaining (assuming {chars_per_sec} chars/sec): {eta}')
 
     chapter_wav_files = []
     for i, chapter in enumerate(selected_chapters, start=1):
         if max_chapters and i > max_chapters: break
         text = chapter.extracted_text
         xhtml_file_name = chapter.get_name().replace(' ', '_').replace('/', '_').replace('\\', '_')
-        chapter_filename = filename.replace('.epub', f'_chapter_{i}_{voice}_{xhtml_file_name}.wav')
-        chapter_wav_files.append(chapter_filename)
-        if Path(chapter_filename).exists():
+        chapter_wav_path = Path(output_folder) / filename.replace('.epub', f'_chapter_{i}_{voice}_{xhtml_file_name}.wav')
+        chapter_wav_files.append(chapter_wav_path)
+        if Path(chapter_wav_path).exists():
             print(f'File for chapter {i} already exists. Skipping')
             continue
         if len(text.strip()) < 10:
             print(f'Skipping empty chapter {i}')
-            chapter_wav_files.remove(chapter_filename)
+            chapter_wav_files.remove(chapter_wav_path)
             continue
         if i == 1:
             # add intro text
@@ -89,25 +94,25 @@ def main(file_path, voice, pick_manually, speed, max_chapters=None, max_sentence
             audio_segments = gen_audio_segments(pipeline, text, voice, speed, max_sentences=max_sentences)
             if audio_segments:
                 final_audio = np.concatenate(audio_segments)
-                soundfile.write(chapter_filename, final_audio, sample_rate)
+                soundfile.write(chapter_wav_path, final_audio, sample_rate)
                 end_time = time.time()
                 delta_seconds = end_time - start_time
                 chars_per_sec = len(text) / delta_seconds
                 processed_chars += len(text)
                 spinner.ok("✅")
                 print(f'Estimated time remaining: {strfdelta((total_chars - processed_chars) / chars_per_sec)}')
-                print('Chapter written to', chapter_filename)
+                print('Chapter written to', chapter_wav_path)
                 print(f'Chapter {i} read in {delta_seconds:.2f} seconds ({chars_per_sec:.0f} characters per second)')
                 progress = processed_chars * 100 // total_chars
                 print('Progress:', f'{progress}%\n')
             else:
                 spinner.fail("❌")
                 print(f'Warning: No audio generated for chapter {i}')
-                chapter_wav_files.remove(chapter_filename)
+                chapter_wav_files.remove(chapter_wav_path)
 
     if has_ffmpeg:
-        create_index_file(title, creator, chapter_wav_files)
-        create_m4b(chapter_wav_files, filename, cover_image)
+        create_index_file(title, creator, chapter_wav_files, output_folder)
+        create_m4b(chapter_wav_files, filename, cover_image, output_folder)
 
 
 def find_cover(book):
@@ -222,28 +227,29 @@ def strfdelta(tdelta, fmt='{D:02}d {H:02}h {M:02}m {S:02}s'):
     return f.format(fmt, **values)
 
 
-def create_m4b(chapter_files, filename, cover_image):
-    tmp_filename = filename.replace('.epub', '.tmp.mp4')
-    if not Path(tmp_filename).exists():
+def create_m4b(chapter_files, filename, cover_image, output_folder):
+    tmp_file_path = Path(output_folder) / filename.replace('.epub', '.tmp.mp4')
+    if not tmp_file_path.exists():
         combined_audio = AudioSegment.empty()
         for wav_file in chapter_files:
             audio = AudioSegment.from_wav(wav_file)
             combined_audio += audio
         print('Converting to Mp4...')
-        combined_audio.export(tmp_filename, format="mp4", codec="aac", bitrate="64k")
+        combined_audio.export(tmp_file_path, format="mp4", codec="aac", bitrate="64k")
     final_filename = filename.replace('.epub', '.m4b')
     print('Creating M4B file...')
 
     if cover_image:
-        cover_image_file = NamedTemporaryFile("wb", delete=False)
-        cover_image_file.write(cover_image)
-        cover_image_args = ["-i", cover_image_file.name, "-map", "0:a", "-map", "2:v"]
+        cover_file_path = Path(output_folder) / 'cover'
+        with open(cover_file_path, 'wb') as f:
+            f.write(cover_image)
+        cover_image_args = ["-i", cover_file_path.name, "-map", "0:a", "-map", "2:v"]
     else:
         cover_image_args = []
 
     proc = subprocess.run([
         'ffmpeg',
-        '-i', f'{tmp_filename}',
+        '-i', f'{tmp_file_path}',
         '-i', 'chapters.txt',
         *cover_image_args,
         '-map', '0',
@@ -255,7 +261,7 @@ def create_m4b(chapter_files, filename, cover_image):
         '-f', 'mp4',
         f'{final_filename}'
     ])
-    Path(tmp_filename).unlink()
+    Path(tmp_file_path).unlink()
     if proc.returncode == 0:
         print(f'{final_filename} created. Enjoy your audiobook.')
         print('Feel free to delete the intermediary .wav chapter files, the .m4b is all you need.')
@@ -267,8 +273,8 @@ def probe_duration(file_name):
     return float(proc.stdout.strip())
 
 
-def create_index_file(title, creator, chapter_mp3_files):
-    with open("chapters.txt", "w") as f:
+def create_index_file(title, creator, chapter_mp3_files, output_folder):
+    with open(Path(output_folder) / "chapters.txt", "w") as f:
         f.write(f";FFMETADATA1\ntitle={title}\nartist={creator}\n\n")
         start = 0
         i = 0

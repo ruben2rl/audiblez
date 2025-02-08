@@ -21,7 +21,7 @@ def cli_main():
     parser.add_argument('-p', '--pick', default=False, help=f'Interactively select which chapters to read in the audiobook', action='store_true')
     parser.add_argument('-s', '--speed', default=1.0, help=f'Set speed from 0.5 to 2.0', type=float)
     parser.add_argument('-c', '--cuda', default=False, help=f'Use GPU via Cuda in Torch if available', action='store_true')
-    parser.add_argument('-g', '--gui', default=False, help=f'Run graphical application instead of command line', action='store_true')
+    parser.add_argument('-o', '--output', default='.', help='Output folder for the audiobook and temporary files')
 
     if len(sys.argv) == 1:
         parser.print_help(sys.stderr)
@@ -37,7 +37,7 @@ def cli_main():
             print('CUDA GPU not available. Defaulting to CPU')
 
     from core import main
-    main(args.epub_file_path, args.voice, args.pick, args.speed)
+    main(args.epub_file_path, args.voice, args.pick, args.speed, args.output)
 
 
 if __name__ == '__main__':
