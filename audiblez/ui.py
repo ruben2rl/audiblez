@@ -1,15 +1,18 @@
 import io
+import os
 import subprocess
-
 import numpy as np
 import soundfile
 import wx
+import wx.lib.newevent
 import wx.lib.mixins.listctrl as listmix
 from wx.lib.scrolledpanel import ScrolledPanel
 from PIL import Image
 import threading
 
 from voices import voices, flags
+
+EventCoreStarted, EVENT_CORE_STARTED = EVT_MEDIA_STARTED = wx.lib.newevent.NewEvent()
 
 
 class MainWindow(wx.Frame):
@@ -18,12 +21,14 @@ class MainWindow(wx.Frame):
         super().__init__(parent, title=title, size=(w, w * 3 // 4))
         self.chapters_panel = None
         self.preview_threads = []
+        self.selected_chapter = None
+        self.selected_book = None
 
         self.create_menu()
         self.create_layout()
         self.Centre()
         self.Show(True)
-        # self.open_epub('./epub/dragon.epub')
+        self.open_epub('../epub/solenoid.epub')
 
     def create_menu(self):
         menubar = wx.MenuBar()
@@ -39,40 +44,72 @@ class MainWindow(wx.Frame):
         menubar.Append(file_menu, "&File")
         self.SetMenuBar(menubar)
 
+        self.Bind(EVENT_CORE_STARTED, self.event_core_started)
+
+    def event_core_started(self, event):
+        print('EVENT_CORE_STARTED')
+
     def create_layout(self):
-        # top_panel = wx.Panel(self)
-        # top_sizer = wx.BoxSizer(wx.VERTICAL)
+        # Panels layout looks like this:
+        # splitter
+        #   splitter_left
+        #   splitter_right
+        #       center_panel
+        #       right_panel
+        #           book_info_panel_box
+        #               book_info_panel
+        #                   cover_bitmap
+        #                   book_details_panel
+        #           param_panel_box
 
-        self.main_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        top_panel = wx.Panel(self)
+        top_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        top_panel.SetSizer(top_sizer)
+
+        # Open Epub button
+        open_epub_button = wx.Button(top_panel, label="📁 Open EPUB")
+        open_epub_button.Bind(wx.EVT_BUTTON, self.on_open)
+        top_sizer.Add(open_epub_button, 0, wx.ALL, 5)
+
+        # About button
+        help_button = wx.Button(top_panel, label="ℹ️ About")
+        help_button.Bind(wx.EVT_BUTTON, lambda event: self.about_dialog())
+        top_sizer.Add(help_button, 0, wx.ALL, 5)
+
+        self.main_sizer = wx.BoxSizer(wx.VERTICAL)
         self.SetSizer(self.main_sizer)
-        splitter = wx.SplitterWindow(self, -1, wx.Point(10, 0), wx.Size(1500, -1), wx.SP_3D)
-        self.main_sizer.Add(splitter, 1, wx.EXPAND)
-        splitter_right = wx.Panel(splitter)
 
-        self.left_panel = wx.Panel(splitter, -1)
-        # self.main_sizer.Add(self.left_panel, 1, wx.ALL | wx.EXPAND, 5)
+        self.splitter = wx.SplitterWindow(self, -1, wx.Point(10, 0), wx.Size(900, -1), wx.SP_3D)
+        self.splitter.SetMinimumPaneSize(50)
+        self.main_sizer.Add(top_panel, 0, wx.ALL | wx.EXPAND, 5)
+        self.main_sizer.Add(self.splitter, 1, wx.EXPAND)
+
+    def create_layout_for_ebook(self, splitter):
+        splitter_left = wx.Panel(splitter, -1)
+        splitter_right = wx.Panel(self.splitter)
+        self.splitter_left, self.splitter_right = splitter_left, splitter_right
+
+        # self.main_sizer.Add(splitter_left, 1, wx.ALL | wx.EXPAND, 5)
         self.left_sizer = wx.BoxSizer(wx.VERTICAL)
         # self.left_sizer.SetMinSize(50, 0)
-        open_epub_button = wx.Button(self.left_panel, label="📁 Open EPUB")
-        open_epub_button.Bind(wx.EVT_BUTTON, self.on_open)
-        self.left_sizer.Add(open_epub_button, 0, wx.ALL, 5)
-        self.left_panel.SetSizer(self.left_sizer)
+        splitter_left.SetSizer(self.left_sizer)
 
-        help_button = wx.Button(self.left_panel, label="ℹ️ About")
-        help_button.Bind(wx.EVT_BUTTON, lambda event: self.about_dialog())
-        self.left_sizer.Add(help_button, 0, wx.ALL, 5)
-
-        # add center panel with huge text area
+        # add center panel with large text area
         self.center_panel = wx.Panel(splitter_right)
-        # self.main_sizer.Add(self.center_panel, 1, wx.ALL | wx.EXPAND, 5)
         self.center_sizer = wx.BoxSizer(wx.VERTICAL)
         self.center_panel.SetSizer(self.center_sizer)
-        self.text_area = wx.TextCtrl(self.center_panel, style=wx.TE_MULTILINE, size=(300, -1))
+        self.text_area = wx.TextCtrl(self.center_panel, style=wx.TE_MULTILINE, size=(200, -1))
         font = wx.Font(14, wx.MODERN, wx.NORMAL, wx.NORMAL)
         self.text_area.SetFont(font)
+        # On text change, update the extracted_text attribute of the selected_chapter:
+        self.text_area.Bind(wx.EVT_TEXT, lambda event: setattr(self.selected_chapter, 'extracted_text', self.text_area.GetValue()))
 
         label = wx.StaticText(self.center_panel, label="View / Edit Chapter content:")
+        preview_button = wx.Button(self.center_panel, label="🔊 Preview")
+        preview_button.Bind(wx.EVT_BUTTON, self.on_preview_chapter)
+
         self.center_sizer.Add(label, 0, wx.ALL, 5)
+        self.center_sizer.Add(preview_button, 0, wx.ALL, 5)
         self.center_sizer.Add(self.text_area, 1, wx.ALL | wx.EXPAND, 5)
 
         splitter_right_sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -83,8 +120,8 @@ class MainWindow(wx.Frame):
         splitter_right_sizer.Add(self.center_panel, 1, wx.ALL | wx.EXPAND, 5)
         splitter_right_sizer.Add(self.right_panel, 1, wx.ALL, 5)
 
-        splitter.SplitVertically(self.left_panel, splitter_right)
-        self.Layout()
+        splitter.SplitVertically(splitter_left, splitter_right)
+        # self.Layout()
 
     def about_dialog(self):
         msg = "A simple tool to generate audiobooks from EPUB files using Kokoro-82M models\n\n" + \
@@ -92,17 +129,6 @@ class MainWindow(wx.Frame):
         wx.MessageBox(msg, "Audiblez")
 
     def create_right_panel(self, splitter_right):
-        # splitter
-        #   left_panel
-        #   splitter_right
-        #       center_panel
-        #       right_panel
-        #           book_info_panel_box
-        #               book_info_panel
-        #                   cover_bitmap
-        #                   book_details_panel
-        #           param_panel_box
-
         # right_panel is a vertical layout with book info on top and parameters on the bottom
         self.right_panel = wx.Panel(splitter_right)
         self.right_panel.SetSize((500, -1))
@@ -124,6 +150,11 @@ class MainWindow(wx.Frame):
         self.book_info_sizer.Add(self.cover_bitmap, 0, wx.ALL, 5)
         self.book_info_panel.SetSize(500, -1)
 
+        self.cover_bitmap.Refresh()
+        self.book_info_panel.Refresh()
+        self.book_info_panel.Layout()
+        self.cover_bitmap.Layout()
+
         self.create_book_details_panel()
         self.create_param_panel()
 
@@ -135,23 +166,23 @@ class MainWindow(wx.Frame):
 
         # Add title
         title_label = wx.StaticText(book_details_panel, label="Title:")
-        title_text = wx.StaticText(book_details_panel, label="Solenoid")
+        title_text = wx.StaticText(book_details_panel, label=self.selected_book_title)
         book_details_sizer.Add(title_label, pos=(0, 0), flag=wx.ALL, border=5)
         book_details_sizer.Add(title_text, pos=(0, 1), flag=wx.ALL, border=5)
 
         # Add Author
         author_label = wx.StaticText(book_details_panel, label="Author:")
-        author_text = wx.StaticText(book_details_panel, label="Mircea Cartarescu")
+        author_text = wx.StaticText(book_details_panel, label=self.selected_book_author)
         book_details_sizer.Add(author_label, pos=(1, 0), flag=wx.ALL, border=5)
         book_details_sizer.Add(author_text, pos=(1, 1), flag=wx.ALL, border=5)
 
         # Add Total length
         length_label = wx.StaticText(book_details_panel, label="Total Length:")
         if not hasattr(self, 'document_chapters'):
-            total_len = '0'
+            total_len = 0
         else:
-            total_len = str(sum([len(c.extracted_text) for c in self.document_chapters]))
-        length_text = wx.StaticText(book_details_panel, label=total_len)
+            total_len = sum([len(c.extracted_text) for c in self.document_chapters])
+        length_text = wx.StaticText(book_details_panel, label=f'{total_len:,} characters')
         book_details_sizer.Add(length_label, pos=(2, 0), flag=wx.ALL, border=5)
         book_details_sizer.Add(length_text, pos=(2, 1), flag=wx.ALL, border=5)
 
@@ -197,9 +228,10 @@ class MainWindow(wx.Frame):
         self.param_sizer.Add(start_button, pos=(2, 0), span=(1, 2), flag=wx.ALL, border=border)
         return self.param_panel
 
-    def on_view_chapter(self, chapter):
+    def on_selected_chapter(self, chapter):
         def handle_event(event):
-            print('Selecting chapter', chapter)
+            print('Selecting chapter', chapter, len(chapter.extracted_text))
+            self.selected_chapter = chapter
             self.text_area.SetValue(chapter.extracted_text)
 
         return handle_event
@@ -214,6 +246,10 @@ class MainWindow(wx.Frame):
         self.selected_speed = speed
 
     def open_epub(self, file_path):
+        # Cleanup previous layout
+        if hasattr(self, 'selected_book'):
+            self.splitter.DestroyChildren()
+
         self.selected_file_path = file_path
         print(f"Opening file: {file_path}")  # Do something with the filepath (e.g., parse the EPUB)
 
@@ -221,12 +257,15 @@ class MainWindow(wx.Frame):
         from core import find_document_chapters_and_extract_texts, find_good_chapters, find_cover
         book = epub.read_epub(file_path)
         meta_title = book.get_metadata('DC', 'title')
-        title = meta_title[0][0] if meta_title else ''
+        self.selected_book_title = meta_title[0][0] if meta_title else ''
         meta_creator = book.get_metadata('DC', 'creator')
-        creator = meta_creator[0][0] if meta_creator else ''
+        self.selected_book_author = meta_creator[0][0] if meta_creator else ''
+        self.selected_book = book
 
         self.document_chapters = find_document_chapters_and_extract_texts(book)
         good_chapters = find_good_chapters(self.document_chapters)
+
+        self.create_layout_for_ebook(self.splitter)
 
         # Update Cover
         cover = find_cover(book)
@@ -251,12 +290,13 @@ class MainWindow(wx.Frame):
             self.left_sizer.Add(chapters_panel, 1, wx.ALL | wx.EXPAND, 5)
             self.chapters_panel = chapters_panel
 
-        self.left_panel.Layout()
-        self.Layout()
+        # These two are very important:
+        self.splitter_right.Layout()
+        self.splitter_left.Layout()
 
     def create_chapters_panel(self, good_chapters):
         # Create a chapters_panel with chapters_grid layout and scrollable
-        chapters_panel = ScrolledPanel(self.left_panel, -1, style=wx.TAB_TRAVERSAL | wx.SUNKEN_BORDER)
+        chapters_panel = ScrolledPanel(self.splitter_left, -1, style=wx.TAB_TRAVERSAL | wx.SUNKEN_BORDER)
         chapters_panel.SetupScrolling(scroll_x=False, scroll_y=True)
         chapters_grid = wx.GridBagSizer(5, 5)
         self.chapters_grid = chapters_grid
@@ -282,13 +322,14 @@ class MainWindow(wx.Frame):
             chapters_grid.Add(chapter_size_label, pos=(i, 1), flag=wx.ALL, border=5)
 
             view_button = wx.Button(chapters_panel, label="📝 Edit")
-            view_button.Bind(wx.EVT_BUTTON, self.on_view_chapter(chapter))
+            view_button.Bind(wx.EVT_BUTTON, self.on_selected_chapter(chapter))
             chapters_grid.Add(view_button, pos=(i, 2), flag=wx.ALL, border=5)
 
             # add preview button
-            preview_button = wx.Button(chapters_panel, label="🔊 Preview")
-            preview_button.Bind(wx.EVT_BUTTON, self.on_preview_chapter(chapter))
-            chapters_grid.Add(preview_button, pos=(i, 3), flag=wx.ALL, border=5)
+            # preview_button = wx.Button(chapters_panel, label="🔊 Preview")
+            # preview_button.chapter = chapter
+            # preview_button.Bind(wx.EVT_BUTTON, self.on_preview_chapter(chapter))
+            # chapters_grid.Add(preview_button, pos=(i, 3), flag=wx.ALL, border=5)
 
             # Add divier line:
             # line = wx.StaticLine(chapters_panel)
@@ -303,59 +344,54 @@ class MainWindow(wx.Frame):
     def get_selected_speed(self):
         return float(self.selected_speed)
 
-    def on_preview_chapter(self, chapter):
-        def handle_event(event):
-            lang_code = self.get_selected_voice()[0]
-            button = event.GetEventObject()
-            button.SetLabel("⏳")
-            button.Disable()
+    # def reset_play_button_init_state(self, button):
+    #     button.SetLabel("🔊 Preview")
+    #     button.Bind(wx.EVT_BUTTON, self.on_preview_chapter(button.chapter))
 
-            def generate_preview():
-                import audiblez
-                from kokoro import KPipeline
-                pipeline = KPipeline(lang_code=lang_code)
-                audiblez.load_spacy()
-                text = chapter.extracted_text[:300]
-                if len(text) == 0: return
-                audio_segments = audiblez.gen_audio_segments(
-                    pipeline,
-                    text,
-                    voice=self.get_selected_voice(),
-                    speed=self.get_selected_speed())
-                final_audio = np.concatenate(audio_segments)
-                soundfile.write('preview.wav', final_audio, audiblez.sample_rate)
-                # from pydub.playback import play
-                # from pydub import AudioSegment
-                # seg = AudioSegment.from_wav('preview.wav')
-                # play(seg)
-                # TODO: https://www.blog.pythonlibrary.org/2010/07/24/wxpython-creating-a-simple-media-player/
-                subprocess.run(['ffplay', '-autoexit', '-nodisp', 'preview.wav'])
-                button.SetLabel("🔊 Preview")
-                button.Enable()
+    def on_preview_chapter(self, event):
+        lang_code = self.get_selected_voice()[0]
+        button = event.GetEventObject()
+        button.SetLabel("⏳")
+        button.Disable()
 
-            if len(self.preview_threads) > 0:
-                for thread in self.preview_threads:
-                    thread.join()
-                self.preview_threads = []
-            thread = threading.Thread(target=generate_preview)
-            thread.start()
-            self.preview_threads.append(thread)
+        def generate_preview():
+            import core
+            from kokoro import KPipeline
+            pipeline = KPipeline(lang_code=lang_code)
+            core.load_spacy()
+            text = self.selected_chapter.extracted_text[:300]
+            if len(text) == 0: return
+            audio_segments = core.gen_audio_segments(
+                pipeline,
+                text,
+                voice=self.get_selected_voice(),
+                speed=self.get_selected_speed())
+            final_audio = np.concatenate(audio_segments)
+            soundfile.write('preview.wav', final_audio, core.sample_rate)
+            # TODO: https://www.blog.pythonlibrary.org/2010/07/24/wxpython-creating-a-simple-media-player/
+            cmd = ['ffplay', '-autoexit', '-nodisp', 'preview.wav']
+            # subprocess.run(cmd)
+            play_proc = subprocess.Popen(' '.join(cmd), stdout=subprocess.PIPE, shell=True, preexec_fn=os.setsid)
+            button.SetLabel("🔊 Preview")
+            button.Enable()
 
-        return handle_event
+        if len(self.preview_threads) > 0:
+            for thread in self.preview_threads:
+                thread.join()
+            self.preview_threads = []
+        thread = threading.Thread(target=generate_preview)
+        thread.start()
+        self.preview_threads.append(thread)
 
     def on_start(self, event):
         file_path = self.selected_file_path
         voice = self.selected_voice.split(' ')[1]  # Remove the flag
         speed = float(self.selected_speed)
         selected_chapters = [chapter for chapter in self.document_chapters if chapter.is_selected]
-
         print('Starting Audiobook Synthesis', dict(file_path=file_path, voice=voice, pick_manually=False, speed=speed))
-
-        def run_audiblez():
-            import audiblez
-            audiblez.main(file_path=file_path, voice=voice, pick_manually=False, speed=speed, selected_chapters=selected_chapters)
-
-        threading.Thread(target=run_audiblez).start()
+        self.core_thread = CoreThread(params=dict(
+            file_path=file_path, voice=voice, pick_manually=False, speed=speed, selected_chapters=selected_chapters))
+        self.core_thread.start()
 
     def on_open(self, event):
         with wx.FileDialog(self, "Open EPUB File", wildcard="*.epub", style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as dialog:
@@ -366,10 +402,21 @@ class MainWindow(wx.Frame):
             if not file_path:
                 print('No filepath?')
                 return
-            self.open_epub(file_path)
+            wx.CallAfter(self.open_epub, file_path)
 
     def on_exit(self, event):
         self.Close()
+
+
+class CoreThread(threading.Thread):
+    def __init__(self, params):
+        super().__init__()
+        self.params = params
+
+    def run(self):
+        # wx.PostEvent(wx.GetApp().GetTopWindow(), wx.PyCommandEvent(EVENT_CORE_STARTED))
+        import core
+        core.main(**self.params)
 
 
 class TableCtrl(wx.ListCtrl, listmix.ColumnSorterMixin, listmix.CheckListCtrlMixin):
@@ -395,12 +442,13 @@ class TableCtrl(wx.ListCtrl, listmix.ColumnSorterMixin, listmix.CheckListCtrlMix
 
 
 def main():
-    print('starting...')
+    print('Starting GUI...')
     app = wx.App(False)
     frame = MainWindow(None, "Audiblez - Generate Audiobooks from E-books")
     frame.Show(True)
     frame.Layout()
     app.SetTopWindow(frame)
+    print('Done.')
     app.MainLoop()
 
 
