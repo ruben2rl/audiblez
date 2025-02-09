@@ -275,13 +275,15 @@ class MainWindow(wx.Frame):
             cuda_radio.SetValue(True)
         else:
             cpu_radio.SetValue(True)
-            cuda_radio.Disable()
+            # cuda_radio.Disable()
         sizer.Add(engine_label, pos=(0, 0), flag=wx.ALL, border=border)
         sizer.Add(engine_radio_panel, pos=(0, 1), flag=wx.ALL, border=border)
         engine_radio_panel_sizer = wx.BoxSizer(wx.HORIZONTAL)
         engine_radio_panel.SetSizer(engine_radio_panel_sizer)
         engine_radio_panel_sizer.Add(cpu_radio, 0, wx.ALL, 5)
         engine_radio_panel_sizer.Add(cuda_radio, 0, wx.ALL, 5)
+        cpu_radio.Bind(wx.EVT_RADIOBUTTON, lambda event: torch.set_default_device('cpu'))
+        cuda_radio.Bind(wx.EVT_RADIOBUTTON, lambda event: torch.set_default_device('cuda'))
 
         # Create a list of voices with flags
         flag_and_voice_list = []
@@ -352,7 +354,6 @@ class MainWindow(wx.Frame):
         self.eta_label = wx.StaticText(panel, label="Estimated Time Remaining: ")
         self.eta_label.Hide()
         sizer.Add(self.eta_label, 0, wx.ALL, 5)
-
 
     def open_output_folder_dialog(self, event):
         with wx.DirDialog(self, "Choose a directory:", style=wx.DD_DEFAULT_STYLE) as dialog:
