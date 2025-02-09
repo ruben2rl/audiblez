@@ -11,7 +11,7 @@ jobs:
           python-version: '3.11'
       - uses: actions/checkout@v3
       - name: install ffmpeg, espeak-ng, wxgtk
-        run: sudo apt-get update && sudo apt-get install ffmpeg espeak-ng python-wxgtk4.0 --fix-missing
+        run: sudo apt-get update && sudo apt-get install ffmpeg espeak-ng python3-wxgtk4.0 --fix-missing
       - name: Install dependencies
         run: pip install poetry && poetry install
       - name: check it runs as script
