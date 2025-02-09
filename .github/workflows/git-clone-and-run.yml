@@ -40,6 +40,6 @@ jobs:
         run: Invoke-WebRequest -Uri https://github.com/daisy/epub-accessibility-tests/releases/download/fundamental-2.0/Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.epub -OutFile book.epub
       - name: create audiobook
         run: audiblez book.epub
-      - name: check m4b output file
-        run: ls -lah book.m4b
+      - name: check book.m4b file exists in current directory
+        run: Get-ChildItem -Path .\ -Filter *.m4b
 
