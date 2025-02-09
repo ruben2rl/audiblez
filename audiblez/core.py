@@ -235,7 +235,7 @@ def create_m4b(chapter_files, filename, cover_image, output_folder):
             combined_audio += audio
         print('Converting to Mp4...')
         combined_audio.export(tmp_file_path, format="mp4", codec="aac", bitrate="64k")
-    final_filename = filename.replace('.epub', '.m4b')
+    final_filename = Path(output_folder) / filename.replace('.epub', '.m4b')
     print('Creating M4B file...')
 
     if cover_image:
@@ -248,6 +248,7 @@ def create_m4b(chapter_files, filename, cover_image, output_folder):
 
     proc = subprocess.run([
         'ffmpeg',
+        '-y',
         '-i', f'{tmp_file_path}',
         '-i', 'chapters.txt',
         *cover_image_args,

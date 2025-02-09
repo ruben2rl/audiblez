@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# This is a simple wxWidgets UI for audiblez
+# A simple wxWidgets UI for audiblez
 import io
 import os
 import subprocess
