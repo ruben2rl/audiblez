@@ -13,13 +13,13 @@ jobs:
       - name: install ffmpeg, espeak-ng, wxgtk
         run: sudo apt-get update && sudo apt-get install ffmpeg espeak-ng libgtk-3-dev --fix-missing
       - name: Install dependencies
-        run: pip install poetry && poetry install
+        run: pip install .
       - name: check it runs as script
         run: poetry run audiblez --help
       - name: download test epub
         run: wget https://github.com/daisy/epub-accessibility-tests/releases/download/fundamental-2.0/Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.epub
       - name: create audiobook
-        run: poetry run audiblez Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.epub
+        run: audiblez Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.epub
       - name: check m4b output file
         run: ls -lah Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.m4b
   #      - name: run unit-tests (unittest classes in /test)
@@ -33,13 +33,13 @@ jobs:
         with:
           python-version: "3.11"
       - name: Install dependencies
-        run: pip install poetry && poetry install
+        run: pip install .
       - name: check it runs as script
         run: poetry run audiblez --help
-      - name: download test epub
-        run: wget https://github.com/daisy/epub-accessibility-tests/releases/download/fundamental-2.0/Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.epub
+      - name: download test epub on windows using powershell
+        run: Invoke-WebRequest -Uri  https://github.com/daisy/epub-accessibility-tests/releases/download/fundamental-2.0/Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.epub
       - name: create audiobook
-        run: poetry run audiblez Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.epub
+        run: audiblez Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.epub
       - name: check m4b output file
         run: ls -lah Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.m4b
 
