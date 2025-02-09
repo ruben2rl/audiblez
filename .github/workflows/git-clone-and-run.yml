@@ -10,12 +10,12 @@ jobs:
         with:
           python-version: '3.11'
       - uses: actions/checkout@v3
+      - name: install ffmpeg, espeak-ng, wxgtk
+        run: sudo apt-get update && sudo apt-get install ffmpeg espeak-ng python-wxgtk3.0-dev --fix-missing
       - name: Install dependencies
         run: pip install poetry && poetry install
       - name: check it runs as script
         run: poetry run audiblez --help
-      - name: install ffmpeg and espeak-ng
-        run: sudo apt-get update && sudo apt-get install ffmpeg espeak-ng python-wxgtk3.0-dev --fix-missing
       - name: download test epub
         run: wget https://github.com/daisy/epub-accessibility-tests/releases/download/fundamental-2.0/Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.epub
       - name: create audiobook
