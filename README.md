@@ -26,10 +26,13 @@ If you have Python 3 on your computer, you can install it with pip.
 You also need `espeak-ng` and `ffmpeg` installed on your machine:
 
 ```bash
+sudo apt install ffmpeg espeak-ng python-wxgtk3.0-dev   # on Ubuntu/Debian 🐧
 pip install audiblez
+```
 
-sudo apt install ffmpeg espeak-ng     # on Ubuntu/Debian 🐧
-brew install ffmpeg espeak-ng         # on Mac 🍏
+```python
+brew install ffmpeg espeak-ng                           # on Mac 🍏
+pip install audiblez
 ```
 
 Then, to run the graphical interface, just type:
@@ -38,7 +41,7 @@ Then, to run the graphical interface, just type:
 audiblez-ui
 ```
 
-If you prefer the comand-line instead, you can convert an .epub with:
+If you prefer the command-line instead, you can convert an .epub directly with:
 
 ```bash
 audiblez book.epub -v af_sky
@@ -85,7 +88,35 @@ We don't currently support Apple Silicon, as there is not yet a Kokoro implement
 ## Manually pick chapters to convert
 
 Sometimes you want to manually select which chapters/sections in the e-book to read out loud.
-To do so, you can use `--pick` to interactively choose the chapters to convert.
+To do so, you can use `--pick` to interactively choose the chapters to convert (without running the GUI).
+
+
+## Help page
+For all the options available, you can check the help page `audiblez --help`:
+
+```bash
+usage: audiblez [-h] [-v VOICE] [-p] [-s SPEED] [-c] [-o FOLDER] epub_file_path
+
+positional arguments:
+  epub_file_path        Path to the epub file
+
+options:
+  -h, --help            show this help message and exit
+  -v VOICE, --voice VOICE
+                        Choose narrating voice: a, b, e, f, h, i, j, p, z
+  -p, --pick            Interactively select which chapters to read in the audiobook
+  -s SPEED, --speed SPEED
+                        Set speed from 0.5 to 2.0
+  -c, --cuda            Use GPU via Cuda in Torch if available
+  -o FOLDER, --output FOLDER
+                        Output folder for the audiobook and temporary files
+
+example:
+  audiblez book.epub -l en-us -v af_sky
+
+to use the GUI, run:
+  audiblez-ui
+```
 
 ## Author
 
