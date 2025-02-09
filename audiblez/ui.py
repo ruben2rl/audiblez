@@ -22,9 +22,9 @@ EventCoreChapterFinished, EVENT_CORE_CHAPTER_FINISHED = wx.lib.newevent.NewEvent
 
 class MainWindow(wx.Frame):
     def __init__(self, parent, title):
-        screen_w, screen_h = wx.GetDisplaySize()
-        window_w = int(screen_w * 0.6)
-        super().__init__(parent, title=title, size=(window_w, window_w * 3 // 4))
+        screen_width, screen_h = wx.GetDisplaySize()
+        self.window_width = int(screen_width * 0.6)
+        super().__init__(parent, title=title, size=(self.window_width, self.window_width * 3 // 4))
         self.chapters_panel = None
         self.preview_threads = []
         self.selected_chapter = None
@@ -126,7 +126,7 @@ class MainWindow(wx.Frame):
         self.center_panel = wx.Panel(splitter_right)
         self.center_sizer = wx.BoxSizer(wx.VERTICAL)
         self.center_panel.SetSizer(self.center_sizer)
-        self.text_area = wx.TextCtrl(self.center_panel, style=wx.TE_MULTILINE, size=(400, -1))
+        self.text_area = wx.TextCtrl(self.center_panel, style=wx.TE_MULTILINE, size=(int(self.window_width * 0.4), -1))
         font = wx.Font(14, wx.MODERN, wx.NORMAL, wx.NORMAL)
         self.text_area.SetFont(font)
         # On text change, update the extracted_text attribute of the selected_chapter:
@@ -378,10 +378,10 @@ class MainWindow(wx.Frame):
         panel.SetSizer(sizer)
 
         table = wx.ListCtrl(panel, style=wx.LC_REPORT | wx.BORDER_SUNKEN)
-        table.InsertColumn(0, "Include in Audiobook")
+        table.InsertColumn(0, "Included")
         table.InsertColumn(1, "Chapter Name")
         table.InsertColumn(2, "Chapter Length")
-        table.SetColumnWidth(0, 150)
+        table.SetColumnWidth(0, 80)
         table.SetColumnWidth(1, 150)
         table.SetColumnWidth(2, 150)
         table.SetSize((250, -1))
@@ -392,56 +392,13 @@ class MainWindow(wx.Frame):
 
         for i, chapter in enumerate(self.document_chapters):
             auto_selected = chapter in good_chapters
-            table.Append([auto_selected, chapter.short_name, f"{len(chapter.extracted_text):,}"])
+            table.Append(['', chapter.short_name, f"{len(chapter.extracted_text):,}"])
             if auto_selected: table.CheckItem(i)
 
         title_text = wx.StaticText(panel, label=f"Select chapters to include in the audiobook:")
         sizer.Add(title_text, 0, wx.ALL, 5)
         sizer.Add(table, 1, wx.ALL | wx.EXPAND, 5)
         return panel
-
-    def create_chapters_panel(self, good_chapters):
-        # Create a chapters_panel with chapters_grid layout and scrollable
-        chapters_panel = ScrolledPanel(self.splitter_left, -1, style=wx.TAB_TRAVERSAL | wx.SUNKEN_BORDER)
-        chapters_panel.SetupScrolling(scroll_x=False, scroll_y=True)
-        chapters_grid = wx.GridBagSizer(5, 5)
-        self.chapters_grid = chapters_grid
-        chapters_panel.SetSizer(chapters_grid)
-        chapters_panel.SetScrollRate(10, 10)
-
-        # Add title
-        title_text = wx.StaticText(chapters_panel, label=f"Select chapters to include in the audiobook:")
-        chapters_grid.Add(title_text, pos=(0, 0), flag=wx.ALL, border=5, span=(1, 3))
-
-        # Add row for each chapter, add a row with a checkbox (with the chapter_title) and a button to play the chapter
-        i = 1
-        for chapter in self.document_chapters:
-            chapter.checkbox = wx.CheckBox(chapters_panel, label=chapter.short_name)
-            chapter.is_selected = (chapter in good_chapters)
-            chapter.checkbox.SetValue(chapter.is_selected)
-            chapter.checkbox.Bind(wx.EVT_CHECKBOX, lambda event: setattr(chapter, 'is_selected', event.IsChecked()))
-            chapters_grid.Add(chapter.checkbox, pos=(i, 0), flag=wx.ALL, border=5)
-
-            # Add label with chapter size in characters
-            chapter_size_label = wx.StaticText(chapters_panel, label=f"({len(chapter.extracted_text):,} chars)")
-            chapters_grid.Add(chapter_size_label, pos=(i, 1), flag=wx.ALL, border=5)
-
-            view_button = wx.Button(chapters_panel, label="📝 Edit")
-            view_button.Bind(wx.EVT_BUTTON, self.on_selected_chapter(chapter))
-            chapters_grid.Add(view_button, pos=(i, 2), flag=wx.ALL, border=5)
-
-            # add preview button
-            # preview_button = wx.Button(chapters_panel, label="🔊 Preview")
-            # preview_button.chapter = chapter
-            # preview_button.Bind(wx.EVT_BUTTON, self.on_preview_chapter(chapter))
-            # chapters_grid.Add(preview_button, pos=(i, 3), flag=wx.ALL, border=5)
-
-            # Add divier line:
-            # line = wx.StaticLine(chapters_panel)
-            # chapters_grid.Add(line, pos=(i + 1, 0), span=(1, 3), flag=wx.EXPAND | wx.ALL, border=5)
-
-            i += 1
-        return chapters_panel
 
     def get_selected_voice(self):
         return self.selected_voice.split(' ')[1]
