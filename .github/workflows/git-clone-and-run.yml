@@ -37,9 +37,9 @@ jobs:
       - name: check it runs as script
         run: audiblez --help
       - name: download test epub on windows using powershell
-        run: Invoke-WebRequest -Uri  https://github.com/daisy/epub-accessibility-tests/releases/download/fundamental-2.0/Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.epub
+        run: Invoke-WebRequest -Uri https://github.com/daisy/epub-accessibility-tests/releases/download/fundamental-2.0/Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.epub -OutFile book.epub
       - name: create audiobook
-        run: audiblez Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.epub
+        run: audiblez book.epub
       - name: check m4b output file
-        run: ls -lah Fundamental-Accessibility-Tests-Basic-Functionality-v2.0.0.m4b
+        run: ls -lah book.m4b
 
