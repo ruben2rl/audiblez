@@ -1,4 +1,4 @@
-# Audiblez: Generate  audiobooks from e-books 
+# Audiblez: Generate  audiobooks from e-books
 
 [![Installing via pip and running](https://github.com/santinic/audiblez/actions/workflows/pip-install.yaml/badge.svg)](https://github.com/santinic/audiblez/actions/workflows/pip-install.yaml)
 [![Git clone and run](https://github.com/santinic/audiblez/actions/workflows/git-clone-and-run.yml/badge.svg)](https://github.com/santinic/audiblez/actions/workflows/git-clone-and-run.yml)
@@ -32,7 +32,13 @@ sudo apt install ffmpeg espeak-ng     # on Ubuntu/Debian 🐧
 brew install ffmpeg espeak-ng         # on Mac 🍏
 ```
 
-Then, to convert an epub file into an audiobook, just run:
+Then, to run the graphical interface, just type:
+
+```bash
+audiblez-ui
+```
+
+If you prefer the comand-line instead, you can convert an .epub with:
 
 ```bash
 audiblez book.epub -v af_sky
@@ -53,21 +59,20 @@ audiblez book.epub -v af_sky -s 1.5
 
 ## Supported Voices
 
-Use `-v` option to specify the voice to use. Available voices are listed here. 
+Use `-v` option to specify the voice to use. Available voices are listed here.
 The first letter is the language code and the second is the gender of the speaker e.g. `im_nicola` is an italian male voice.
 
-| Language | Voices |
-|----------|--------|
-| 🇺🇸 | `af_alloy`, `af_aoede`, `af_bella`, `af_heart`, `af_jessica`, `af_kore`, `af_nicole`, `af_nova`, `af_river`, `af_sarah`, `af_sky`, `am_adam`, `am_echo`, `am_eric`, `am_fenrir`, `am_liam`, `am_michael`, `am_onyx`, `am_puck`, `am_santa` |
-| 🇬🇧 | `bf_alice`, `bf_emma`, `bf_isabella`, `bf_lily`, `bm_daniel`, `bm_fable`, `bm_george`, `bm_lewis` |
-| 🇪🇸 | `ef_dora`, `em_alex`, `em_santa` |
-| 🇫🇷 | `ff_siwis` |
-| 🇮🇳 | `hf_alpha`, `hf_beta`, `hm_omega`, `hm_psi` |
-| 🇮🇹 | `if_sara`, `im_nicola` |
-| 🇯🇵 | `jf_alpha`, `jf_gongitsune`, `jf_nezumi`, `jf_tebukuro`, `jm_kumo` |
-| 🇧🇷 | `pf_dora`, `pm_alex`, `pm_santa` |
-| 🇨🇳 | `zf_xiaobei`, `zf_xiaoni`, `zf_xiaoxiao`, `zf_xiaoyi`, `zm_yunjian`, `zm_yunxi`, `zm_yunxia`, `zm_yunyang` |
-
+| Language | Voices                                                                                                                                                                                                                                     |
+|----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 🇺🇸     | `af_alloy`, `af_aoede`, `af_bella`, `af_heart`, `af_jessica`, `af_kore`, `af_nicole`, `af_nova`, `af_river`, `af_sarah`, `af_sky`, `am_adam`, `am_echo`, `am_eric`, `am_fenrir`, `am_liam`, `am_michael`, `am_onyx`, `am_puck`, `am_santa` |
+| 🇬🇧     | `bf_alice`, `bf_emma`, `bf_isabella`, `bf_lily`, `bm_daniel`, `bm_fable`, `bm_george`, `bm_lewis`                                                                                                                                          |
+| 🇪🇸     | `ef_dora`, `em_alex`, `em_santa`                                                                                                                                                                                                           |
+| 🇫🇷     | `ff_siwis`                                                                                                                                                                                                                                 |
+| 🇮🇳     | `hf_alpha`, `hf_beta`, `hm_omega`, `hm_psi`                                                                                                                                                                                                |
+| 🇮🇹     | `if_sara`, `im_nicola`                                                                                                                                                                                                                     |
+| 🇯🇵     | `jf_alpha`, `jf_gongitsune`, `jf_nezumi`, `jf_tebukuro`, `jm_kumo`                                                                                                                                                                         |
+| 🇧🇷     | `pf_dora`, `pm_alex`, `pm_santa`                                                                                                                                                                                                           |
+| 🇨🇳     | `zf_xiaobei`, `zf_xiaoni`, `zf_xiaoxiao`, `zf_xiaoyi`, `zm_yunjian`, `zm_yunxi`, `zm_yunxia`, `zm_yunyang`                                                                                                                                 |
 
 ## How to run on GPU
 
@@ -81,7 +86,6 @@ We don't currently support Apple Silicon, as there is not yet a Kokoro implement
 
 Sometimes you want to manually select which chapters/sections in the e-book to read out loud.
 To do so, you can use `--pick` to interactively choose the chapters to convert.
-
 
 ## Author
 
