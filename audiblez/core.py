@@ -32,13 +32,6 @@ def load_spacy():
         spacy.cli.download("xx_ent_wiki_sm")
 
 
-def print_progress(stats):
-    progress = stats.processed_chars * 100 // stats.total_chars
-    eta = strfdelta((stats.total_chars - stats.processed_chars) / stats.chars_per_sec)
-    print(f'Estimated time remaining: {eta}')
-    print('Progress:', f'{progress}%\n')
-
-
 def main(file_path, voice, pick_manually, speed, output_folder='.',
          max_chapters=None, max_sentences=None, selected_chapters=None, post_event=None):
     if post_event: post_event('CORE_STARTED')
@@ -96,7 +89,6 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
             stats.processed_chars += len(text)
             if post_event:
                 post_event('CORE_CHAPTER_FINISHED', chapter_index=chapter.chapter_index)
-                post_event('CORE_PROGRESS', progress=stats.processed_chars * 100 // stats.total_chars)
             continue
         if len(text.strip()) < 10:
             print(f'Skipping empty chapter {i}')
@@ -169,9 +161,13 @@ def gen_audio_segments(pipeline, text, voice, speed, stats=None, max_sentences=N
         if max_sentences and i > max_sentences: break
         for gs, ps, audio in pipeline(sent.text, voice=voice, speed=speed, split_pattern=r'\n\n\n'):
             audio_segments.append(audio)
-        if stats: stats.processed_chars += len(sent.text)
-        if post_event: post_event('CORE_PROGRESS', progress=stats.processed_chars * 100 // stats.total_chars)
-        print_progress(stats)
+        if stats:
+            stats.processed_chars += len(sent.text)
+            stats.progress = stats.processed_chars * 100 // stats.total_chars
+            stats.eta = strfdelta((stats.total_chars - stats.processed_chars) / stats.chars_per_sec)
+            if post_event: post_event('CORE_PROGRESS', stats=stats)
+            print(f'Estimated time remaining: {stats.eta}')
+            print('Progress:', f'{stats.progress}%\n')
     return audio_segments
 
 

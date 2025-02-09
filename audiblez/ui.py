@@ -13,6 +13,7 @@ from wx.lib.newevent import NewEvent
 from wx.lib.scrolledpanel import ScrolledPanel
 from PIL import Image
 from tempfile import NamedTemporaryFile
+from pathlib import Path
 
 from voices import voices, flags
 
@@ -36,12 +37,19 @@ class MainWindow(wx.Frame):
         self.preview_threads = []
         self.selected_chapter = None
         self.selected_book = None
+        self.synthesis_in_progress = False
+
+        self.Bind(EVENTS['CORE_STARTED'][1], self.on_core_started)
+        self.Bind(EVENTS['CORE_CHAPTER_STARTED'][1], self.on_core_chapter_started)
+        self.Bind(EVENTS['CORE_CHAPTER_FINISHED'][1], self.on_core_chapter_finished)
+        self.Bind(EVENTS['CORE_PROGRESS'][1], self.on_core_progress)
+        self.Bind(EVENTS['CORE_FINISHED'][1], self.on_core_finished)
 
         self.create_menu()
         self.create_layout()
         self.Centre()
         self.Show(True)
-        # self.open_epub('../epub/lewis.epub')
+        if Path('../epub/lewis.epub').exists(): self.open_epub('../epub/lewis.epub')
 
     def create_menu(self):
         menubar = wx.MenuBar()
@@ -57,17 +65,13 @@ class MainWindow(wx.Frame):
         menubar.Append(file_menu, "&File")
         self.SetMenuBar(menubar)
 
-        self.Bind(EVENTS['CORE_STARTED'][1], self.on_core_started)
-        self.Bind(EVENTS['CORE_CHAPTER_STARTED'][1], self.on_core_chapter_started)
-        self.Bind(EVENTS['CORE_CHAPTER_FINISHED'][1], self.on_core_chapter_finished)
-        self.Bind(EVENTS['CORE_PROGRESS'][1], self.on_core_progress)
-
     def on_core_started(self, event):
         print('CORE_STARTED')
         self.progress_bar_label.Show()
         self.progress_bar.Show()
         self.progress_bar.SetValue(0)
         self.progress_bar.Layout()
+        self.eta_label.Show()
         self.params_panel.Layout()
         self.synth_panel.Layout()
 
@@ -82,13 +86,14 @@ class MainWindow(wx.Frame):
 
     def on_core_progress(self, event):
         # print('CORE_PROGRESS', event.progress)
-        self.progress_bar.SetValue(event.progress)
-        self.progress_bar_label.SetLabel(f"Synthesis Progress: {event.progress}%")
+        self.progress_bar.SetValue(event.stats.progress)
+        self.progress_bar_label.SetLabel(f"Synthesis Progress: {event.stats.progress}%")
+        self.eta_label.SetLabel(f"Estimated Time Remaining: {event.stats.eta}")
         self.synth_panel.Layout()
 
     def on_core_finished(self, event):
-        print('CORE_FINISHED', event.progress)
-        self.open_folder_with_explorer(event.output_folder)
+        self.synthesis_in_progress = False
+        self.open_folder_with_explorer(self.output_folder_text_ctrl.GetValue())
 
     def create_layout(self):
         # Panels layout looks like this:
@@ -189,8 +194,10 @@ class MainWindow(wx.Frame):
         splitter_right_sizer.Add(self.right_panel, 1, wx.ALL | wx.EXPAND, 5)
 
     def about_dialog(self):
-        msg = "A simple tool to generate audiobooks from EPUB files using Kokoro-82M models\n\n" + \
-              "by Claudio Santini 2025\nand many contributors.\n\n"
+        msg = ("A simple tool to generate audiobooks from EPUB files using Kokoro-82M models\n" +
+               "Distributed under the MIT License.\n\n" +
+               "by Claudio Santini 2025\nand many contributors.\n\n" +
+               "https://claudio.uk\n\n")
         wx.MessageBox(msg, "Audiblez")
 
     def create_right_panel(self, splitter_right):
@@ -340,6 +347,12 @@ class MainWindow(wx.Frame):
         sizer.Add(self.progress_bar, 0, wx.ALL | wx.EXPAND, 5)
         self.progress_bar_label.Hide()
         self.progress_bar.Hide()
+
+        # Add ETA Label
+        self.eta_label = wx.StaticText(panel, label="Estimated Time Remaining: ")
+        self.eta_label.Hide()
+        sizer.Add(self.eta_label, 0, wx.ALL, 5)
+
 
     def open_output_folder_dialog(self, event):
         with wx.DirDialog(self, "Choose a directory:", style=wx.DD_DEFAULT_STYLE) as dialog:
@@ -492,6 +505,7 @@ class MainWindow(wx.Frame):
         self.preview_threads.append(thread)
 
     def on_start(self, event):
+        self.synthesis_in_progress = True
         file_path = self.selected_file_path
         voice = self.selected_voice.split(' ')[1]  # Remove the flag
         speed = float(self.selected_speed)
@@ -502,7 +516,7 @@ class MainWindow(wx.Frame):
         self.table.EnableCheckBoxes(False)
         for chapter_index, chapter in enumerate(self.document_chapters):
             if chapter in selected_chapters:
-                self.self.table.SetItem(chapter_index, 3, "Planned")
+                self.set_table_chapter_status(chapter_index, "Planned")
                 self.table.SetItem(chapter_index, 0, '✔️')
 
         # self.stop_button.Show()
@@ -523,10 +537,16 @@ class MainWindow(wx.Frame):
             if not file_path:
                 print('No filepath?')
                 return
-            wx.CallAfter(self.open_epub, file_path)
+            if self.synthesis_in_progress:
+                wx.MessageBox("Audiobook synthesis is still in progress. Please wait for it to finish.", "Audiobook Synthesis in Progress")
+            else:
+                wx.CallAfter(self.open_epub, file_path)
 
     def on_exit(self, event):
         self.Close()
+
+    def set_table_chapter_status(self, chapter_index, status):
+        self.table.SetItem(chapter_index, 3, status)
 
     def open_folder_with_explorer(self, folder_path):
         try:
