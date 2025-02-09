@@ -20,7 +20,11 @@ dependencies = [
 ]
 exclude = [
     "imgs",
-    "test"
+    "test",
+    "*.wav",
+    "*.m4b",
+    "cover",
+    "chapters.txt"
 ]
 
 [build-system]
