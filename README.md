@@ -26,12 +26,12 @@ If you have Python 3 on your computer, you can install it with pip.
 You also need `espeak-ng` and `ffmpeg` installed on your machine:
 
 ```bash
-sudo apt install ffmpeg espeak-ng python-wxgtk3.0-dev   # on Ubuntu/Debian 🐧
+sudo apt install ffmpeg espeak-ng libgtk-3-dev      # on Ubuntu/Debian 🐧
 pip install audiblez
 ```
 
 ```python
-brew install ffmpeg espeak-ng                           # on Mac 🍏
+brew install ffmpeg espeak-ng                       # on Mac 🍏
 pip install audiblez
 ```
 
