@@ -1,6 +1,6 @@
 [project]
 name = "audiblez"
-version = "0.3.5"
+version = "0.4.0"
 description = "Generate audiobooks from e-books (epub to wav/m4b)"
 authors = [
     { name = "Claudio Santini", email = "hireclaudio@gmail.com" }
@@ -32,6 +32,7 @@ Issues = "https://github.com/santinic/audiblez/issues"
 
 [project.scripts]
 audiblez = "audiblez.cli:cli_main"
+audiblez-ui = "audiblez.ui:main"
 
 [tool.poetry.group.dev.dependencies]
 deptry = "^0.23.0"

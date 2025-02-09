@@ -1,17 +1,18 @@
 #!/usr/bin/env python3
 # A simple wxWidgets UI for audiblez
-import io
-import os
-import subprocess
-from tempfile import NamedTemporaryFile
 import torch.cuda
 import numpy as np
 import soundfile
+import threading
+import platform
+import subprocess
+import io
+import os
 import wx
 from wx.lib.newevent import NewEvent
 from wx.lib.scrolledpanel import ScrolledPanel
 from PIL import Image
-import threading
+from tempfile import NamedTemporaryFile
 
 from voices import voices, flags
 
@@ -40,7 +41,7 @@ class MainWindow(wx.Frame):
         self.create_layout()
         self.Centre()
         self.Show(True)
-        self.open_epub('../epub/lewis.epub')
+        # self.open_epub('../epub/lewis.epub')
 
     def create_menu(self):
         menubar = wx.MenuBar()
@@ -70,10 +71,6 @@ class MainWindow(wx.Frame):
         self.params_panel.Layout()
         self.synth_panel.Layout()
 
-        for chapter_index, chapter in enumerate(self.document_chapters):
-            if chapter in self.good_chapters:
-                self.set_table_chapter_status(chapter.chapter_index, "Planned")
-
     def on_core_chapter_started(self, event):
         # print('CORE_CHAPTER_STARTED', event.chapter_index)
         self.set_table_chapter_status(event.chapter_index, "⏳ In Progress")
@@ -93,23 +90,26 @@ class MainWindow(wx.Frame):
         print('CORE_FINISHED', event.progress)
         self.open_folder_with_explorer(event.output_folder)
 
-    def set_table_chapter_status(self, chapter_index, status):
-        self.table.SetItem(chapter_index, 3, status)
-
     def create_layout(self):
         # Panels layout looks like this:
         # splitter
-        #   splitter_left
-        #       chapters_panel
-        #   splitter_right
-        #       center_panel
-        #           text_area
-        #       right_panel
-        #           book_info_panel_box
-        #               book_info_panel
-        #                   cover_bitmap
-        #                   book_details_panel
-        #           param_panel_box
+        #     splitter_left
+        #         chapters_panel
+        #     splitter_right
+        #         center_panel
+        #             text_area
+        #         right_panel
+        #             book_info_panel_box
+        #                 book_info_panel
+        #                     cover_bitmap
+        #                     book_details_panel
+        #             param_panel_box
+        #                  param_panel
+        #                      ...
+        #             synth_panel_box
+        #                  synth_panel
+        #                      start_button
+        #                      ...
 
         top_panel = wx.Panel(self)
         top_sizer = wx.BoxSizer(wx.HORIZONTAL)
@@ -121,19 +121,19 @@ class MainWindow(wx.Frame):
         top_sizer.Add(open_epub_button, 0, wx.ALL, 5)
 
         # Open Markdown .md
-        open_md_button = wx.Button(top_panel, label="📁 Open Markdown (.md)")
-        open_md_button.Bind(wx.EVT_BUTTON, self.on_open)
-        top_sizer.Add(open_md_button, 0, wx.ALL, 5)
+        # open_md_button = wx.Button(top_panel, label="📁 Open Markdown (.md)")
+        # open_md_button.Bind(wx.EVT_BUTTON, self.on_open)
+        # top_sizer.Add(open_md_button, 0, wx.ALL, 5)
 
         # Open .txt
-        open_txt_button = wx.Button(top_panel, label="📁 Open .txt")
-        open_txt_button.Bind(wx.EVT_BUTTON, self.on_open)
-        top_sizer.Add(open_txt_button, 0, wx.ALL, 5)
+        # open_txt_button = wx.Button(top_panel, label="📁 Open .txt")
+        # open_txt_button.Bind(wx.EVT_BUTTON, self.on_open)
+        # top_sizer.Add(open_txt_button, 0, wx.ALL, 5)
 
         # Open PDF
-        open_pdf_button = wx.Button(top_panel, label="📁 Open PDF")
-        open_pdf_button.Bind(wx.EVT_BUTTON, self.on_open)
-        top_sizer.Add(open_pdf_button, 0, wx.ALL, 5)
+        # open_pdf_button = wx.Button(top_panel, label="📁 Open PDF")
+        # open_pdf_button.Bind(wx.EVT_BUTTON, self.on_open)
+        # top_sizer.Add(open_pdf_button, 0, wx.ALL, 5)
 
         # About button
         help_button = wx.Button(top_panel, label="ℹ️ About")
@@ -159,7 +159,6 @@ class MainWindow(wx.Frame):
         self.splitter_sizer.Add(splitter_left, 1, wx.ALL | wx.EXPAND, 5)
         self.splitter_sizer.Add(splitter_right, 2, wx.ALL | wx.EXPAND, 5)
 
-        # self.main_sizer.Add(splitter_left, 1, wx.ALL | wx.EXPAND, 5)
         self.left_sizer = wx.BoxSizer(wx.VERTICAL)
         splitter_left.SetSizer(self.left_sizer)
 
@@ -186,12 +185,8 @@ class MainWindow(wx.Frame):
         splitter_right.SetSizer(splitter_right_sizer)
 
         self.create_right_panel(splitter_right)
-
         splitter_right_sizer.Add(self.center_panel, 1, wx.ALL | wx.EXPAND, 5)
         splitter_right_sizer.Add(self.right_panel, 1, wx.ALL | wx.EXPAND, 5)
-
-        # splitter.SplitVertically(splitter_left, splitter_right)
-        # self.Layout()
 
     def about_dialog(self):
         msg = "A simple tool to generate audiobooks from EPUB files using Kokoro-82M models\n\n" + \
@@ -199,9 +194,7 @@ class MainWindow(wx.Frame):
         wx.MessageBox(msg, "Audiblez")
 
     def create_right_panel(self, splitter_right):
-        # right_panel is a vertical layout with book info on top and parameters on the bottom
         self.right_panel = wx.Panel(splitter_right)
-        # self.right_panel.SetSize((500, -1))
         self.right_sizer = wx.BoxSizer(wx.VERTICAL)
         self.right_panel.SetSizer(self.right_sizer)
 
@@ -316,8 +309,6 @@ class MainWindow(wx.Frame):
         sizer.Add(self.output_folder_text_ctrl, pos=(3, 1), flag=wx.ALL | wx.EXPAND, border=border)
         sizer.Add(output_folder_button, pos=(4, 1), flag=wx.ALL, border=border)
 
-        return panel
-
     def create_synthesis_panel(self):
         # Think and identify layout issue with the folling code
         panel_box = wx.Panel(self.right_panel, style=wx.SUNKEN_BORDER)
@@ -335,7 +326,7 @@ class MainWindow(wx.Frame):
         self.start_button.Bind(wx.EVT_BUTTON, self.on_start)
         sizer.Add(self.start_button, 0, wx.ALL, 5)
 
-        # Add hidden Stop button
+        # Add Stop button
         # self.stop_button = wx.Button(panel, label="⏹️ Stop Synthesis")
         # self.stop_button.Bind(wx.EVT_BUTTON, self.on_stop)
         # sizer.Add(self.stop_button, 0, wx.ALL, 5)
@@ -357,14 +348,6 @@ class MainWindow(wx.Frame):
             output_folder = dialog.GetPath()
             print(f"Selected output folder: {output_folder}")
             self.output_folder_text_ctrl.SetValue(output_folder)
-
-    # def on_selected_chapter(self, chapter):
-    #     def handle_event(event):
-    #         self.selected_chapter = chapter
-    #         self.text_area.SetValue(chapter.extracted_text)
-    #         self.chapter_label.SetLabel(f'Edit / Preview content for section "{chapter.short_name}":')
-    #
-    #     return handle_event
 
     def on_select_voice(self, event):
         self.selected_voice = event.GetString()
@@ -409,7 +392,6 @@ class MainWindow(wx.Frame):
         wx_img.Rescale(cover_w, int(cover_w * wx_img.GetHeight() / wx_img.GetWidth()))
         self.cover_bitmap.SetBitmap(wx_img.ConvertToBitmap())
 
-        # chapters_panel = self.create_chapters_panel(good_chapters)
         chapters_panel = self.create_chapters_table_panel(good_chapters)
 
         #  chapters_panel to left_sizer, or replace if it exists already
@@ -496,7 +478,6 @@ class MainWindow(wx.Frame):
             final_audio = np.concatenate(audio_segments)
             tmp_preview_wav_file = NamedTemporaryFile(suffix='.wav', delete=False)
             soundfile.write(tmp_preview_wav_file, final_audio, core.sample_rate)
-            # TODO: https://www.blog.pythonlibrary.org/2010/07/24/wxpython-creating-a-simple-media-player/
             cmd = ['ffplay', '-autoexit', '-nodisp', tmp_preview_wav_file.name]
             subprocess.Popen(' '.join(cmd), stdout=subprocess.PIPE, shell=True, preexec_fn=os.setsid)
             button.SetLabel("🔊 Preview")
@@ -517,6 +498,13 @@ class MainWindow(wx.Frame):
         selected_chapters = [chapter for chapter in self.document_chapters if chapter.is_selected]
         self.start_button.Disable()
         self.params_panel.Disable()
+
+        self.table.EnableCheckBoxes(False)
+        for chapter_index, chapter in enumerate(self.document_chapters):
+            if chapter in selected_chapters:
+                self.self.table.SetItem(chapter_index, 3, "Planned")
+                self.table.SetItem(chapter_index, 0, '✔️')
+
         # self.stop_button.Show()
         print('Starting Audiobook Synthesis', dict(file_path=file_path, voice=voice, pick_manually=False, speed=speed))
         self.core_thread = CoreThread(params=dict(
@@ -542,7 +530,6 @@ class MainWindow(wx.Frame):
 
     def open_folder_with_explorer(self, folder_path):
         try:
-            import platform
             if platform.system() == 'Windows':
                 subprocess.Popen(['explorer', folder_path])
             elif platform.system() == 'Linux':
@@ -559,7 +546,6 @@ class CoreThread(threading.Thread):
         self.params = params
 
     def run(self):
-        # wx.PostEvent(wx.GetApp().GetTopWindow(), EventCoreStarted())
         import core
         core.main(**self.params, post_event=self.post_event)
 
