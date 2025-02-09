@@ -1,6 +1,10 @@
 # -*- coding: utf-8 -*-
+import platform
 
 flags = {'a': '🇺🇸', 'b': '🇬🇧', 'e': '🇪🇸', 'f': '🇫🇷', 'h': '🇮🇳', 'i': '🇮🇹', 'j': '🇯🇵', 'p': '🇧🇷', 'z': '🇨🇳'}
+
+flags_win = {'a': 'american', 'b': 'british', 'e': 'spanish', 'f': 'french', 'h': 'hindi', 'i': 'italian',
+             'j': 'japanese', 'p': 'portuguese', 'z': 'chinese'}
 
 voices = {
     'a': ['af_alloy', 'af_aoede', 'af_bella', 'af_heart', 'af_jessica', 'af_kore', 'af_nicole', 'af_nova',
@@ -17,5 +21,7 @@ voices = {
           'zm_yunyang']
 }
 
-available_voices_str = ('\n'.join([f'  {flags[lang]} {", ".join(voices[lang])}' for lang in voices])
-                        .replace(' af_sky,', '\n       af_sky,'))
+if platform.system() == 'Windows':
+    available_voices_str = '\n'.join([f'  {flags_win[lang]}:\t{", ".join(voices[lang])}' for lang in voices])
+else:
+    available_voices_str = '\n'.join([f'  {flags[lang]}:\t{", ".join(voices[lang])}' for lang in voices])
