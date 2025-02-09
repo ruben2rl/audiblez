@@ -8,16 +8,20 @@ import torch.cuda
 import numpy as np
 import soundfile
 import wx
-import wx.lib.newevent
+from wx.lib.newevent import NewEvent
 from wx.lib.scrolledpanel import ScrolledPanel
 from PIL import Image
 import threading
 
 from voices import voices, flags
 
-EventCoreStarted, EVENT_CORE_STARTED = wx.lib.newevent.NewEvent()
-EventCoreProgress, EVENT_CORE_PROGRESS = wx.lib.newevent.NewEvent()
-EventCoreChapterFinished, EVENT_CORE_CHAPTER_FINISHED = wx.lib.newevent.NewEvent()
+EVENTS = {
+    'CORE_STARTED': NewEvent(),
+    'CORE_PROGRESS': NewEvent(),
+    'CORE_CHAPTER_STARTED': NewEvent(),
+    'CORE_CHAPTER_FINISHED': NewEvent(),
+    'CORE_FINISHED': NewEvent()
+}
 
 
 class MainWindow(wx.Frame):
@@ -34,7 +38,7 @@ class MainWindow(wx.Frame):
         self.create_layout()
         self.Centre()
         self.Show(True)
-        self.open_epub('../epub/gene.epub')
+        self.open_epub('../epub/mini.epub')
 
     def create_menu(self):
         menubar = wx.MenuBar()
@@ -50,10 +54,41 @@ class MainWindow(wx.Frame):
         menubar.Append(file_menu, "&File")
         self.SetMenuBar(menubar)
 
-        self.Bind(EVENT_CORE_STARTED, self.event_core_started)
+        self.Bind(EVENTS['CORE_STARTED'][1], self.on_core_started)
+        self.Bind(EVENTS['CORE_CHAPTER_STARTED'][1], self.on_core_chapter_started)
+        self.Bind(EVENTS['CORE_CHAPTER_FINISHED'][1], self.on_core_chapter_finished)
+        self.Bind(EVENTS['CORE_PROGRESS'][1], self.on_core_progress)
 
-    def event_core_started(self, event):
-        print('EVENT_CORE_STARTED')
+    def on_core_started(self, event):
+        print('CORE_STARTED')
+        self.start_button.Hide()
+        self.progress_bar_label.Show()
+        self.progress_bar.Show()
+        self.progress_bar.SetValue(0)
+        self.param_panel.Disable()
+
+        for chapter_index, chapter in enumerate(self.document_chapters):
+            if chapter in self.good_chapters:
+                self.set_table_chapter_status(chapter.chapter_index, "Planned")
+
+    def on_core_chapter_started(self, event):
+        print('CORE_CHAPTER_STARTED', event.chapter_index)
+        self.set_table_chapter_status(event.chapter_index, "⏳ In Progress")
+
+    def on_core_chapter_finished(self, event):
+        print('CORE_CHAPTER_FINISHED', event.chapter_index)
+        self.set_table_chapter_status(event.chapter_index, "✅ Done")
+        self.start_button.Show()
+
+    def on_core_progress(self, event):
+        print('CORE_PROGRESS', event.progress)
+        self.progress_bar.SetValue(event.progress)
+
+    def on_core_finished(self, event):
+        print('CORE_FINISHED', event.progress)
+
+    def set_table_chapter_status(self, chapter_index, status):
+        self.table.SetStringItem(chapter_index, 3, status)
 
     def create_layout(self):
         # Panels layout looks like this:
@@ -278,9 +313,18 @@ class MainWindow(wx.Frame):
         self.param_sizer.Add(output_folder_button, pos=(4, 1), flag=wx.ALL, border=border)
 
         # Add Start button
-        start_button = wx.Button(self.param_panel, label="🚀 Start Audiobook Synthesis")
-        start_button.Bind(wx.EVT_BUTTON, self.on_start)
-        self.param_sizer.Add(start_button, pos=(6, 0), span=(1, 3), flag=wx.ALL, border=border)
+        self.start_button = wx.Button(self.param_panel, label="🚀 Start Audiobook Synthesis")
+        self.start_button.Bind(wx.EVT_BUTTON, self.on_start)
+        self.param_sizer.Add(self.start_button, pos=(6, 0), span=(1, 3), flag=wx.ALL, border=border)
+
+        # Add Progress Bar label:
+        self.progress_bar_label = wx.StaticText(self.param_panel, label="Synthesis Progress:")
+        self.param_sizer.Add(self.progress_bar_label, pos=(7, 0), flag=wx.ALL, border=border)
+        self.progress_bar = wx.Gauge(self.param_panel, range=100, style=wx.GA_PROGRESS)  # vs GA_HORIZONTAL
+        self.param_sizer.Add(self.progress_bar, pos=(8, 0), span=(1, 3), flag=wx.ALL | wx.EXPAND, border=border)
+        self.progress_bar_label.Hide()
+        self.progress_bar.Hide()
+
         return self.param_panel
 
     def open_output_folder_dialog(self, event):
@@ -325,11 +369,11 @@ class MainWindow(wx.Frame):
         self.selected_book = book
 
         self.document_chapters = find_document_chapters_and_extract_texts(book)
-        for chapter in self.document_chapters:
-            chapter.short_name = chapter.get_name().replace('.xhtml', '').replace('xhtml/', '').replace('.html', '').replace('Text/', '')
         good_chapters = find_good_chapters(self.document_chapters)
         self.selected_chapter = good_chapters[0]
-        # self.on_selected_chapter(good_chapters[0])
+        for chapter in self.document_chapters:
+            chapter.short_name = chapter.get_name().replace('.xhtml', '').replace('xhtml/', '').replace('.html', '').replace('Text/', '')
+            chapter.is_selected = chapter in good_chapters
 
         self.create_layout_for_ebook(self.splitter)
 
@@ -377,13 +421,15 @@ class MainWindow(wx.Frame):
         sizer = wx.BoxSizer(wx.VERTICAL)
         panel.SetSizer(sizer)
 
-        table = wx.ListCtrl(panel, style=wx.LC_REPORT | wx.BORDER_SUNKEN)
+        self.table = table = wx.ListCtrl(panel, style=wx.LC_REPORT | wx.BORDER_SUNKEN)
         table.InsertColumn(0, "Included")
         table.InsertColumn(1, "Chapter Name")
         table.InsertColumn(2, "Chapter Length")
+        table.InsertColumn(3, "Status")
         table.SetColumnWidth(0, 80)
         table.SetColumnWidth(1, 150)
         table.SetColumnWidth(2, 150)
+        table.SetColumnWidth(3, 100)
         table.SetSize((250, -1))
         table.EnableCheckBoxes()
         table.Bind(wx.EVT_LIST_ITEM_CHECKED, self.on_table_checked)
@@ -475,9 +521,17 @@ class CoreThread(threading.Thread):
         self.params = params
 
     def run(self):
-        wx.PostEvent(wx.GetApp().GetTopWindow(), EventCoreStarted())
+        # wx.PostEvent(wx.GetApp().GetTopWindow(), EventCoreStarted())
         import core
-        core.main(**self.params)
+        core.main(**self.params, post_event=self.post_event)
+
+    def post_event(self, event_name, **kwargs):
+        # eg. 'EVENT_CORE_PROGRESS' -> EventCoreProgress, EVENT_CORE_PROGRESS
+        EventObject, EVENT_CODE = EVENTS[event_name]
+        event_object = EventObject()
+        for k, v in kwargs.items():
+            setattr(event_object, k, v)
+        wx.PostEvent(wx.GetApp().GetTopWindow(), event_object)
 
 
 def main():

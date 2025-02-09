@@ -2,6 +2,8 @@
 # audiblez - A program to convert e-books into audiobooks using
 # Kokoro-82M model for high-quality text-to-speech synthesis.
 # by Claudio Santini 2025 - https://claudio.uk
+from io import StringIO
+
 import torch.cuda
 import spacy
 import ebooklib
@@ -11,6 +13,8 @@ import time
 import shutil
 import subprocess
 import re
+
+from markdown import Markdown
 from tabulate import tabulate
 from pathlib import Path
 from string import Formatter
@@ -31,12 +35,15 @@ def load_spacy():
 
 
 def main(file_path, voice, pick_manually, speed, output_folder='.',
-         max_chapters=None, max_sentences=None, selected_chapters=None):
+         max_chapters=None, max_sentences=None, selected_chapters=None, post_event=None):
+    if post_event: post_event('CORE_STARTED')
     load_spacy()
     if output_folder != '.':
         Path(output_folder).mkdir(parents=True, exist_ok=True)
 
     filename = Path(file_path).name
+
+    extension = '.epub'
     book = epub.read_epub(file_path)
     meta_title = book.get_metadata('DC', 'title')
     title = meta_title[0][0] if meta_title else ''
@@ -49,6 +56,7 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
         print(f'Found cover image {cover_maybe.file_name} in {cover_maybe.media_type} format')
 
     document_chapters = find_document_chapters_and_extract_texts(book)
+
     if not selected_chapters:
         if pick_manually is True:
             selected_chapters = pick_chapters(document_chapters)
@@ -74,10 +82,14 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
         if max_chapters and i > max_chapters: break
         text = chapter.extracted_text
         xhtml_file_name = chapter.get_name().replace(' ', '_').replace('/', '_').replace('\\', '_')
-        chapter_wav_path = Path(output_folder) / filename.replace('.epub', f'_chapter_{i}_{voice}_{xhtml_file_name}.wav')
+        chapter_wav_path = Path(output_folder) / filename.replace(extension, f'_chapter_{i}_{voice}_{xhtml_file_name}.wav')
         chapter_wav_files.append(chapter_wav_path)
         if Path(chapter_wav_path).exists():
             print(f'File for chapter {i} already exists. Skipping')
+            processed_chars += len(text)
+            if post_event:
+                post_event('CORE_CHAPTER_FINISHED', chapter_index=chapter.chapter_index)
+                post_event('CORE_PROGRESS', progress=processed_chars * 100 // total_chars)
             continue
         if len(text.strip()) < 10:
             print(f'Skipping empty chapter {i}')
@@ -90,6 +102,7 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
         pipeline = KPipeline(lang_code=voice[0])  # a for american or b for british etc.
 
         with yaspin(text=f'Reading chapter {i} ({len(text):,} characters)...', color="yellow") as spinner:
+            if post_event: post_event('CORE_CHAPTER_STARTED', chapter_index=chapter.chapter_index)
             audio_segments = gen_audio_segments(pipeline, text, voice, speed, max_sentences=max_sentences)
             if audio_segments:
                 final_audio = np.concatenate(audio_segments)
@@ -101,9 +114,11 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
                 spinner.ok("✅")
                 print(f'Estimated time remaining: {strfdelta((total_chars - processed_chars) / chars_per_sec)}')
                 print('Chapter written to', chapter_wav_path)
+                if post_event: post_event('CORE_CHAPTER_FINISHED', chapter_index=chapter.chapter_index)
                 print(f'Chapter {i} read in {delta_seconds:.2f} seconds ({chars_per_sec:.0f} characters per second)')
                 progress = processed_chars * 100 // total_chars
                 print('Progress:', f'{progress}%\n')
+                if post_event: post_event('CORE_PROGRESS', progress=progress)
             else:
                 spinner.fail("❌")
                 print(f'Warning: No audio generated for chapter {i}')
@@ -112,6 +127,7 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
     if has_ffmpeg:
         create_index_file(title, creator, chapter_wav_files, output_folder)
         create_m4b(chapter_wav_files, filename, cover_image, output_folder)
+        if post_event: post_event('CORE_FINISHED')
 
 
 def find_cover(book):
@@ -172,6 +188,8 @@ def find_document_chapters_and_extract_texts(book):
                 text += '.'
             chapter.extracted_text += text + '\n'
         document_chapters.append(chapter)
+    for i, c in enumerate(document_chapters):
+        c.chapter_index = i  # this is used in the UI to identify chapters
     return document_chapters
 
 
@@ -284,3 +302,24 @@ def create_index_file(title, creator, chapter_mp3_files, output_folder):
             f.write(f"[CHAPTER]\nTIMEBASE=1/1000\nSTART={start}\nEND={end}\ntitle=Chapter {i}\n\n")
             i += 1
             start = end
+
+
+def unmark_element(element, stream=None):
+    """auxiliarry function to unmark markdown text"""
+    if stream is None:
+        stream = StringIO()
+    if element.text:
+        stream.write(element.text)
+    for sub in element:
+        unmark_element(sub, stream)
+    if element.tail:
+        stream.write(element.tail)
+    return stream.getvalue()
+
+
+def unmark(text):
+    """Unmark markdown text"""
+    Markdown.output_formats["plain"] = unmark_element  # patching Markdown
+    __md = Markdown(output_format="plain")
+    __md.stripTopLevelTags = False
+    return __md.convert(text)

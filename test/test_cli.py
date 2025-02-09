@@ -29,10 +29,18 @@ class CliTest(unittest.TestCase):
         self.assertTrue(Path('./prova/mini.m4b').stat().st_size > 256 * 1024)
 
     def test_md(self):
-        out = self.cli('markdown.md')
+        content = (
+            '## Italy\n'
+            'Italy, officially the Italian Republic, is a country in '
+            '(Southern)[https://en.wikipedia.org/wiki/Southern_Europe] and Western Europe. '
+            'It consists of a peninsula that extends into the Mediterranean Sea, '
+            'with the Alps on its northern land border, '
+            'as well as nearly 800 islands, notably Sicily and Sardinia.')
+        file_name = NamedTemporaryFile('w', suffix='.txt', delete=False).write(content)
+        out = self.cli(file_name)
         self.assertIn('Creating M4B file', out)
-        self.assertTrue(Path('markdown.mp4').exists())
-        self.assertTrue(Path('markdown.mp4').stat().st_size > 256 * 1024)
+        self.assertTrue(Path(file_name).exists())
+        self.assertTrue(Path('file_name').stat().st_size > 256 * 1024)
 
     def test_txt(self):
         content = (
