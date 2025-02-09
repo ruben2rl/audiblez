@@ -11,6 +11,7 @@ import numpy as np
 import time
 import shutil
 import subprocess
+import platform
 import re
 from io import StringIO
 from types import SimpleNamespace
@@ -146,8 +147,9 @@ def find_cover(book):
 
 
 def print_selected_chapters(document_chapters, chapters):
+    ok = 'X' if platform.system() == 'Windows' else '✅'
     print(tabulate([
-        [i, c.get_name(), len(c.extracted_text), '✅' if c in chapters else '', chapter_beginning_one_liner(c)]
+        [i, c.get_name(), len(c.extracted_text), ok if c in chapters else '', chapter_beginning_one_liner(c)]
         for i, c in enumerate(document_chapters, start=1)
     ], headers=['#', 'Chapter', 'Text Length', 'Selected', 'First words']))
 
