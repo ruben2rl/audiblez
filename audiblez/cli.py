@@ -2,7 +2,7 @@
 import argparse
 import sys
 
-from voices import voices, available_voices_str
+from audiblez.voices import voices, available_voices_str
 
 
 def cli_main():

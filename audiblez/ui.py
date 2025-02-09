@@ -17,7 +17,7 @@ from PIL import Image
 from tempfile import NamedTemporaryFile
 from pathlib import Path
 
-from voices import voices, flags
+from audiblez.voices import voices, flags
 
 EVENTS = {
     'CORE_STARTED': NewEvent(),
@@ -382,7 +382,7 @@ class MainWindow(wx.Frame):
         print(f"Opening file: {file_path}")  # Do something with the filepath (e.g., parse the EPUB)
 
         from ebooklib import epub
-        from core import find_document_chapters_and_extract_texts, find_good_chapters, find_cover
+        from audiblez.core import find_document_chapters_and_extract_texts, find_good_chapters, find_cover
         book = epub.read_epub(file_path)
         meta_title = book.get_metadata('DC', 'title')
         self.selected_book_title = meta_title[0][0] if meta_title else ''
@@ -480,7 +480,7 @@ class MainWindow(wx.Frame):
         button.Disable()
 
         def generate_preview():
-            import core
+            import audiblez.core as core
             from kokoro import KPipeline
             pipeline = KPipeline(lang_code=lang_code)
             core.load_spacy()
@@ -533,7 +533,6 @@ class MainWindow(wx.Frame):
     def on_open(self, event):
         with wx.FileDialog(self, "Open EPUB File", wildcard="*.epub", style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as dialog:
             if dialog.ShowModal() == wx.ID_CANCEL:
-                print('user canceled')
                 return
             file_path = dialog.GetPath()
             print(f"Selected file: {file_path}")
