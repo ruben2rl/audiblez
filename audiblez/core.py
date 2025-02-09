@@ -33,7 +33,6 @@ def load_spacy():
 def main(file_path, voice, pick_manually, speed, output_folder='.',
          max_chapters=None, max_sentences=None, selected_chapters=None):
     load_spacy()
-
     if output_folder != '.':
         Path(output_folder).mkdir(parents=True, exist_ok=True)
 

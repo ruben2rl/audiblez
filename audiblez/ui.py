@@ -1,3 +1,5 @@
+#!/usr/bin/env python3
+# This is a simple wxWidgets UI for audiblez
 import io
 import os
 import subprocess
@@ -15,6 +17,7 @@ from voices import voices, flags
 
 EventCoreStarted, EVENT_CORE_STARTED = wx.lib.newevent.NewEvent()
 EventCoreProgress, EVENT_CORE_PROGRESS = wx.lib.newevent.NewEvent()
+EventCoreChapterFinished, EVENT_CORE_CHAPTER_FINISHED = wx.lib.newevent.NewEvent()
 
 
 class MainWindow(wx.Frame):
@@ -56,8 +59,10 @@ class MainWindow(wx.Frame):
         # Panels layout looks like this:
         # splitter
         #   splitter_left
+        #       chapters_panel
         #   splitter_right
         #       center_panel
+        #           text_area
         #       right_panel
         #           book_info_panel_box
         #               book_info_panel
@@ -74,6 +79,21 @@ class MainWindow(wx.Frame):
         open_epub_button.Bind(wx.EVT_BUTTON, self.on_open)
         top_sizer.Add(open_epub_button, 0, wx.ALL, 5)
 
+        # Open Markdown .md
+        open_md_button = wx.Button(top_panel, label="📁 Open Markdown (.md)")
+        open_md_button.Bind(wx.EVT_BUTTON, self.on_open)
+        top_sizer.Add(open_md_button, 0, wx.ALL, 5)
+
+        # Open .txt
+        open_txt_button = wx.Button(top_panel, label="📁 Open .txt")
+        open_txt_button.Bind(wx.EVT_BUTTON, self.on_open)
+        top_sizer.Add(open_txt_button, 0, wx.ALL, 5)
+
+        # Open PDF
+        open_pdf_button = wx.Button(top_panel, label="📁 Open PDF")
+        open_pdf_button.Bind(wx.EVT_BUTTON, self.on_open)
+        top_sizer.Add(open_pdf_button, 0, wx.ALL, 5)
+
         # About button
         help_button = wx.Button(top_panel, label="ℹ️ About")
         help_button.Bind(wx.EVT_BUTTON, lambda event: self.about_dialog())
@@ -82,9 +102,12 @@ class MainWindow(wx.Frame):
         self.main_sizer = wx.BoxSizer(wx.VERTICAL)
         self.SetSizer(self.main_sizer)
 
-        self.splitter = wx.SplitterWindow(self, -1)
-        self.splitter.SetSashGravity(0.9)
-        self.splitter.SetMinimumPaneSize(50)
+        # self.splitter = wx.SplitterWindow(self, -1)
+        # self.splitter.SetSashGravity(0.9)
+        self.splitter = wx.Panel(self)
+        self.splitter_sizer = wx.BoxSizer(wx.HORIZONTAL)
+        self.splitter.SetSizer(self.splitter_sizer)
+
         self.main_sizer.Add(top_panel, 0, wx.ALL | wx.EXPAND, 5)
         self.main_sizer.Add(self.splitter, 1, wx.EXPAND)
 
@@ -92,6 +115,8 @@ class MainWindow(wx.Frame):
         splitter_left = wx.Panel(splitter, -1)
         splitter_right = wx.Panel(self.splitter)
         self.splitter_left, self.splitter_right = splitter_left, splitter_right
+        self.splitter_sizer.Add(splitter_left, 1, wx.ALL | wx.EXPAND, 5)
+        self.splitter_sizer.Add(splitter_right, 2, wx.ALL | wx.EXPAND, 5)
 
         # self.main_sizer.Add(splitter_left, 1, wx.ALL | wx.EXPAND, 5)
         self.left_sizer = wx.BoxSizer(wx.VERTICAL)
@@ -101,7 +126,7 @@ class MainWindow(wx.Frame):
         self.center_panel = wx.Panel(splitter_right)
         self.center_sizer = wx.BoxSizer(wx.VERTICAL)
         self.center_panel.SetSizer(self.center_sizer)
-        self.text_area = wx.TextCtrl(self.center_panel, style=wx.TE_MULTILINE, size=(200, -1))
+        self.text_area = wx.TextCtrl(self.center_panel, style=wx.TE_MULTILINE, size=(400, -1))
         font = wx.Font(14, wx.MODERN, wx.NORMAL, wx.NORMAL)
         self.text_area.SetFont(font)
         # On text change, update the extracted_text attribute of the selected_chapter:
@@ -124,7 +149,7 @@ class MainWindow(wx.Frame):
         splitter_right_sizer.Add(self.center_panel, 1, wx.ALL | wx.EXPAND, 5)
         splitter_right_sizer.Add(self.right_panel, 1, wx.ALL | wx.EXPAND, 5)
 
-        splitter.SplitVertically(splitter_left, splitter_right)
+        # splitter.SplitVertically(splitter_left, splitter_right)
         # self.Layout()
 
     def about_dialog(self):
@@ -152,7 +177,6 @@ class MainWindow(wx.Frame):
         # Add cover image
         self.cover_bitmap = wx.StaticBitmap(self.book_info_panel, -1)
         self.book_info_sizer.Add(self.cover_bitmap, 0, wx.ALL, 5)
-        # self.book_info_panel.SetSize(900, -1)
 
         self.cover_bitmap.Refresh()
         self.book_info_panel.Refresh()
@@ -244,13 +268,13 @@ class MainWindow(wx.Frame):
 
         # Add file dialog selector to select output folder
         output_folder_label = wx.StaticText(self.param_panel, label="Output Folder:")
-        self.output_folder_text_ctrl = wx.TextCtrl(self.param_panel, value=".")
+        self.output_folder_text_ctrl = wx.TextCtrl(self.param_panel, value=os.path.abspath('.'))
         self.output_folder_text_ctrl.SetEditable(False)
-        self.output_folder_text_ctrl.SetMinSize((200, -1))
+        # self.output_folder_text_ctrl.SetMinSize((200, -1))
         output_folder_button = wx.Button(self.param_panel, label="📂 Select")
         output_folder_button.Bind(wx.EVT_BUTTON, self.open_output_folder_dialog)
         self.param_sizer.Add(output_folder_label, pos=(3, 0), flag=wx.ALL, border=border)
-        self.param_sizer.Add(self.output_folder_text_ctrl, pos=(3, 1), flag=wx.ALL, border=border)
+        self.param_sizer.Add(self.output_folder_text_ctrl, pos=(3, 1), flag=wx.ALL | wx.EXPAND, border=border)
         self.param_sizer.Add(output_folder_button, pos=(4, 1), flag=wx.ALL, border=border)
 
         # Add Start button
@@ -331,8 +355,9 @@ class MainWindow(wx.Frame):
             self.chapters_panel = chapters_panel
 
         # These two are very important:
-        self.splitter_right.Layout()
         self.splitter_left.Layout()
+        self.splitter_right.Layout()
+        self.splitter.Layout()
 
     def on_table_checked(self, event):
         self.document_chapters[event.GetIndex()].is_selected = True
@@ -474,9 +499,10 @@ class MainWindow(wx.Frame):
     def on_open(self, event):
         with wx.FileDialog(self, "Open EPUB File", wildcard="*.epub", style=wx.FD_OPEN | wx.FD_FILE_MUST_EXIST) as dialog:
             if dialog.ShowModal() == wx.ID_CANCEL:
-                return  # User cancelled
-
+                print('user canceled')
+                return
             file_path = dialog.GetPath()
+            print(f"Selected file: {file_path}")
             if not file_path:
                 print('No filepath?')
                 return
