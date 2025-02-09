@@ -1,5 +1,7 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # A simple wxWidgets UI for audiblez
+
 import torch.cuda
 import numpy as np
 import soundfile
