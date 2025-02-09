@@ -23,6 +23,8 @@ EVENTS = {
     'CORE_FINISHED': NewEvent()
 }
 
+border = 5
+
 
 class MainWindow(wx.Frame):
     def __init__(self, parent, title):
@@ -38,7 +40,7 @@ class MainWindow(wx.Frame):
         self.create_layout()
         self.Centre()
         self.Show(True)
-        self.open_epub('../epub/mini.epub')
+        self.open_epub('../epub/lewis.epub')
 
     def create_menu(self):
         menubar = wx.MenuBar()
@@ -61,34 +63,38 @@ class MainWindow(wx.Frame):
 
     def on_core_started(self, event):
         print('CORE_STARTED')
-        self.start_button.Hide()
         self.progress_bar_label.Show()
         self.progress_bar.Show()
         self.progress_bar.SetValue(0)
-        self.param_panel.Disable()
+        self.progress_bar.Layout()
+        self.params_panel.Layout()
+        self.synth_panel.Layout()
 
         for chapter_index, chapter in enumerate(self.document_chapters):
             if chapter in self.good_chapters:
                 self.set_table_chapter_status(chapter.chapter_index, "Planned")
 
     def on_core_chapter_started(self, event):
-        print('CORE_CHAPTER_STARTED', event.chapter_index)
+        # print('CORE_CHAPTER_STARTED', event.chapter_index)
         self.set_table_chapter_status(event.chapter_index, "⏳ In Progress")
 
     def on_core_chapter_finished(self, event):
-        print('CORE_CHAPTER_FINISHED', event.chapter_index)
+        # print('CORE_CHAPTER_FINISHED', event.chapter_index)
         self.set_table_chapter_status(event.chapter_index, "✅ Done")
         self.start_button.Show()
 
     def on_core_progress(self, event):
-        print('CORE_PROGRESS', event.progress)
+        # print('CORE_PROGRESS', event.progress)
         self.progress_bar.SetValue(event.progress)
+        self.progress_bar_label.SetLabel(f"Synthesis Progress: {event.progress}%")
+        self.synth_panel.Layout()
 
     def on_core_finished(self, event):
         print('CORE_FINISHED', event.progress)
+        self.open_folder_with_explorer(event.output_folder)
 
     def set_table_chapter_status(self, chapter_index, status):
-        self.table.SetStringItem(chapter_index, 3, status)
+        self.table.SetItem(chapter_index, 3, status)
 
     def create_layout(self):
         # Panels layout looks like this:
@@ -219,7 +225,8 @@ class MainWindow(wx.Frame):
         self.cover_bitmap.Layout()
 
         self.create_book_details_panel()
-        self.create_param_panel()
+        self.create_params_panel()
+        self.create_synthesis_panel()
 
     def create_book_details_panel(self):
         book_details_panel = wx.Panel(self.book_info_panel)
@@ -249,22 +256,19 @@ class MainWindow(wx.Frame):
         book_details_sizer.Add(length_label, pos=(2, 0), flag=wx.ALL, border=5)
         book_details_sizer.Add(length_text, pos=(2, 1), flag=wx.ALL, border=5)
 
-    def create_param_panel(self):
-        # Add on the bottom right side, 3 dropdowns and a button
-        self.param_panel_box = wx.Panel(self.right_panel, style=wx.SUNKEN_BORDER)
-        param_panel_box_sizer = wx.StaticBoxSizer(wx.VERTICAL, self.param_panel_box, "Audiobook Parameters")
-        self.param_panel_box.SetSizer(param_panel_box_sizer)
+    def create_params_panel(self):
+        panel_box = wx.Panel(self.right_panel, style=wx.SUNKEN_BORDER)
+        panel_box_sizer = wx.StaticBoxSizer(wx.VERTICAL, panel_box, "Audiobook Parameters")
+        panel_box.SetSizer(panel_box_sizer)
 
-        self.param_panel = wx.Panel(self.param_panel_box)
-        param_panel_box_sizer.Add(self.param_panel, 1, wx.ALL | wx.EXPAND, 5)
-        self.right_sizer.Add(self.param_panel_box, 1, wx.ALL | wx.EXPAND, 5)
-        self.param_sizer = wx.GridBagSizer(10, 10)
-        self.param_panel.SetSizer(self.param_sizer)
+        panel = self.params_panel = wx.Panel(panel_box)
+        panel_box_sizer.Add(panel, 1, wx.ALL | wx.EXPAND, 5)
+        self.right_sizer.Add(panel_box, 1, wx.ALL | wx.EXPAND, 5)
+        sizer = wx.GridBagSizer(10, 10)
+        panel.SetSizer(sizer)
 
-        border = 5
-
-        engine_label = wx.StaticText(self.param_panel, label="Engine:")
-        engine_radio_panel = wx.Panel(self.param_panel)
+        engine_label = wx.StaticText(panel, label="Engine:")
+        engine_radio_panel = wx.Panel(panel)
         cpu_radio = wx.RadioButton(engine_radio_panel, label="CPU", style=wx.RB_GROUP)
         cuda_radio = wx.RadioButton(engine_radio_panel, label="CUDA")
         if torch.cuda.is_available():
@@ -272,8 +276,8 @@ class MainWindow(wx.Frame):
         else:
             cpu_radio.SetValue(True)
             cuda_radio.Disable()
-        self.param_sizer.Add(engine_label, pos=(0, 0), flag=wx.ALL, border=border)
-        self.param_sizer.Add(engine_radio_panel, pos=(0, 1), flag=wx.ALL, border=border)
+        sizer.Add(engine_label, pos=(0, 0), flag=wx.ALL, border=border)
+        sizer.Add(engine_radio_panel, pos=(0, 1), flag=wx.ALL, border=border)
         engine_radio_panel_sizer = wx.BoxSizer(wx.HORIZONTAL)
         engine_radio_panel.SetSizer(engine_radio_panel_sizer)
         engine_radio_panel_sizer.Add(cpu_radio, 0, wx.ALL, 5)
@@ -285,47 +289,66 @@ class MainWindow(wx.Frame):
             for v in l:
                 flag_and_voice_list.append(f'{flags[code]} {v}')
 
-        voice_label = wx.StaticText(self.param_panel, label="Voice:")
+        voice_label = wx.StaticText(panel, label="Voice:")
         default_voice = flag_and_voice_list[0]
         self.selected_voice = default_voice
-        voice_dropdown = wx.ComboBox(self.param_panel, choices=flag_and_voice_list, value=default_voice)
+        voice_dropdown = wx.ComboBox(panel, choices=flag_and_voice_list, value=default_voice)
         voice_dropdown.Bind(wx.EVT_COMBOBOX, self.on_select_voice)
-        self.param_sizer.Add(voice_label, pos=(1, 0), flag=wx.ALL, border=border)
-        self.param_sizer.Add(voice_dropdown, pos=(1, 1), flag=wx.ALL, border=border)
+        sizer.Add(voice_label, pos=(1, 0), flag=wx.ALL, border=border)
+        sizer.Add(voice_dropdown, pos=(1, 1), flag=wx.ALL, border=border)
 
         # Add dropdown for speed
-        speed_label = wx.StaticText(self.param_panel, label="Speed:")
-        speed_text_input = wx.TextCtrl(self.param_panel, value="1.0")
+        speed_label = wx.StaticText(panel, label="Speed:")
+        speed_text_input = wx.TextCtrl(panel, value="1.0")
         self.selected_speed = '1.0'
         speed_text_input.Bind(wx.EVT_TEXT, self.on_select_speed)
-        self.param_sizer.Add(speed_label, pos=(2, 0), flag=wx.ALL, border=border)
-        self.param_sizer.Add(speed_text_input, pos=(2, 1), flag=wx.ALL, border=border)
+        sizer.Add(speed_label, pos=(2, 0), flag=wx.ALL, border=border)
+        sizer.Add(speed_text_input, pos=(2, 1), flag=wx.ALL, border=border)
 
         # Add file dialog selector to select output folder
-        output_folder_label = wx.StaticText(self.param_panel, label="Output Folder:")
-        self.output_folder_text_ctrl = wx.TextCtrl(self.param_panel, value=os.path.abspath('.'))
+        output_folder_label = wx.StaticText(panel, label="Output Folder:")
+        self.output_folder_text_ctrl = wx.TextCtrl(panel, value=os.path.abspath('.'))
         self.output_folder_text_ctrl.SetEditable(False)
         # self.output_folder_text_ctrl.SetMinSize((200, -1))
-        output_folder_button = wx.Button(self.param_panel, label="📂 Select")
+        output_folder_button = wx.Button(panel, label="📂 Select")
         output_folder_button.Bind(wx.EVT_BUTTON, self.open_output_folder_dialog)
-        self.param_sizer.Add(output_folder_label, pos=(3, 0), flag=wx.ALL, border=border)
-        self.param_sizer.Add(self.output_folder_text_ctrl, pos=(3, 1), flag=wx.ALL | wx.EXPAND, border=border)
-        self.param_sizer.Add(output_folder_button, pos=(4, 1), flag=wx.ALL, border=border)
+        sizer.Add(output_folder_label, pos=(3, 0), flag=wx.ALL, border=border)
+        sizer.Add(self.output_folder_text_ctrl, pos=(3, 1), flag=wx.ALL | wx.EXPAND, border=border)
+        sizer.Add(output_folder_button, pos=(4, 1), flag=wx.ALL, border=border)
+
+        return panel
+
+    def create_synthesis_panel(self):
+        # Think and identify layout issue with the folling code
+        panel_box = wx.Panel(self.right_panel, style=wx.SUNKEN_BORDER)
+        panel_box_sizer = wx.StaticBoxSizer(wx.VERTICAL, panel_box, "Audiobook Generation Status")
+        panel_box.SetSizer(panel_box_sizer)
+
+        panel = self.synth_panel = wx.Panel(panel_box)
+        panel_box_sizer.Add(panel, 1, wx.ALL | wx.EXPAND, 5)
+        self.right_sizer.Add(panel_box, 1, wx.ALL | wx.EXPAND, 5)
+        sizer = wx.BoxSizer(wx.VERTICAL)
+        panel.SetSizer(sizer)
 
         # Add Start button
-        self.start_button = wx.Button(self.param_panel, label="🚀 Start Audiobook Synthesis")
+        self.start_button = wx.Button(panel, label="🚀 Start Audiobook Synthesis")
         self.start_button.Bind(wx.EVT_BUTTON, self.on_start)
-        self.param_sizer.Add(self.start_button, pos=(6, 0), span=(1, 3), flag=wx.ALL, border=border)
+        sizer.Add(self.start_button, 0, wx.ALL, 5)
+
+        # Add hidden Stop button
+        # self.stop_button = wx.Button(panel, label="⏹️ Stop Synthesis")
+        # self.stop_button.Bind(wx.EVT_BUTTON, self.on_stop)
+        # sizer.Add(self.stop_button, 0, wx.ALL, 5)
+        # self.stop_button.Hide()
 
         # Add Progress Bar label:
-        self.progress_bar_label = wx.StaticText(self.param_panel, label="Synthesis Progress:")
-        self.param_sizer.Add(self.progress_bar_label, pos=(7, 0), flag=wx.ALL, border=border)
-        self.progress_bar = wx.Gauge(self.param_panel, range=100, style=wx.GA_PROGRESS)  # vs GA_HORIZONTAL
-        self.param_sizer.Add(self.progress_bar, pos=(8, 0), span=(1, 3), flag=wx.ALL | wx.EXPAND, border=border)
+        self.progress_bar_label = wx.StaticText(panel, label="Synthesis Progress:")
+        sizer.Add(self.progress_bar_label, 0, wx.ALL, 5)
+        self.progress_bar = wx.Gauge(panel, range=100, style=wx.GA_PROGRESS)
+        self.progress_bar.SetMinSize((-1, 30))
+        sizer.Add(self.progress_bar, 0, wx.ALL | wx.EXPAND, 5)
         self.progress_bar_label.Hide()
         self.progress_bar.Hide()
-
-        return self.param_panel
 
     def open_output_folder_dialog(self, event):
         with wx.DirDialog(self, "Choose a directory:", style=wx.DD_DEFAULT_STYLE) as dialog:
@@ -492,6 +515,9 @@ class MainWindow(wx.Frame):
         voice = self.selected_voice.split(' ')[1]  # Remove the flag
         speed = float(self.selected_speed)
         selected_chapters = [chapter for chapter in self.document_chapters if chapter.is_selected]
+        self.start_button.Disable()
+        self.params_panel.Disable()
+        # self.stop_button.Show()
         print('Starting Audiobook Synthesis', dict(file_path=file_path, voice=voice, pick_manually=False, speed=speed))
         self.core_thread = CoreThread(params=dict(
             file_path=file_path, voice=voice, pick_manually=False, speed=speed,
@@ -513,6 +539,18 @@ class MainWindow(wx.Frame):
 
     def on_exit(self, event):
         self.Close()
+
+    def open_folder_with_explorer(self, folder_path):
+        try:
+            import platform
+            if platform.system() == 'Windows':
+                subprocess.Popen(['explorer', folder_path])
+            elif platform.system() == 'Linux':
+                subprocess.Popen(['xdg-open', folder_path])
+            elif platform.system() == 'Darwin':
+                subprocess.Popen(['open', folder_path])
+        except Exception as e:
+            print(e)
 
 
 class CoreThread(threading.Thread):

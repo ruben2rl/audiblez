@@ -2,8 +2,6 @@
 # audiblez - A program to convert e-books into audiobooks using
 # Kokoro-82M model for high-quality text-to-speech synthesis.
 # by Claudio Santini 2025 - https://claudio.uk
-from io import StringIO
-
 import torch.cuda
 import spacy
 import ebooklib
@@ -13,12 +11,12 @@ import time
 import shutil
 import subprocess
 import re
-
+from io import StringIO
+from types import SimpleNamespace
 from markdown import Markdown
 from tabulate import tabulate
 from pathlib import Path
 from string import Formatter
-from yaspin import yaspin
 from bs4 import BeautifulSoup
 from kokoro import KPipeline
 from ebooklib import epub
@@ -32,6 +30,13 @@ def load_spacy():
     if not spacy.util.is_package("xx_ent_wiki_sm"):
         print("Downloading Spacy model xx_ent_wiki_sm...")
         spacy.cli.download("xx_ent_wiki_sm")
+
+
+def print_progress(stats):
+    progress = stats.processed_chars * 100 // stats.total_chars
+    eta = strfdelta((stats.total_chars - stats.processed_chars) / stats.chars_per_sec)
+    print(f'Estimated time remaining: {eta}')
+    print('Progress:', f'{progress}%\n')
 
 
 def main(file_path, voice, pick_manually, speed, output_folder='.',
@@ -69,13 +74,15 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
     if not has_ffmpeg:
         print('\033[91m' + 'ffmpeg not found. Please install ffmpeg to create mp3 and m4b audiobook files.' + '\033[0m')
 
-    total_chars, processed_chars = sum(map(len, texts)), 0
+    stats = SimpleNamespace(
+        total_chars=sum(map(len, texts)),
+        processed_chars=0,
+        chars_per_sec=500 if torch.cuda.is_available() else 50)
     print('Started at:', time.strftime('%H:%M:%S'))
-    print(f'Total characters: {total_chars:,}')
+    print(f'Total characters: {stats.total_chars:,}')
     print('Total words:', len(' '.join(texts).split()))
-    chars_per_sec = 500 if torch.cuda.is_available() else 50
-    eta = strfdelta((total_chars - processed_chars) / chars_per_sec)
-    print(f'Estimated time remaining (assuming {chars_per_sec} chars/sec): {eta}')
+    eta = strfdelta((stats.total_chars - stats.processed_chars) / stats.chars_per_sec)
+    print(f'Estimated time remaining (assuming {stats.chars_per_sec} chars/sec): {eta}')
 
     chapter_wav_files = []
     for i, chapter in enumerate(selected_chapters, start=1):
@@ -86,10 +93,10 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
         chapter_wav_files.append(chapter_wav_path)
         if Path(chapter_wav_path).exists():
             print(f'File for chapter {i} already exists. Skipping')
-            processed_chars += len(text)
+            stats.processed_chars += len(text)
             if post_event:
                 post_event('CORE_CHAPTER_FINISHED', chapter_index=chapter.chapter_index)
-                post_event('CORE_PROGRESS', progress=processed_chars * 100 // total_chars)
+                post_event('CORE_PROGRESS', progress=stats.processed_chars * 100 // stats.total_chars)
             continue
         if len(text.strip()) < 10:
             print(f'Skipping empty chapter {i}')
@@ -100,29 +107,21 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
             text = f'{title} – {creator}.\n\n' + text
         start_time = time.time()
         pipeline = KPipeline(lang_code=voice[0])  # a for american or b for british etc.
-
-        with yaspin(text=f'Reading chapter {i} ({len(text):,} characters)...', color="yellow") as spinner:
-            if post_event: post_event('CORE_CHAPTER_STARTED', chapter_index=chapter.chapter_index)
-            audio_segments = gen_audio_segments(pipeline, text, voice, speed, max_sentences=max_sentences)
-            if audio_segments:
-                final_audio = np.concatenate(audio_segments)
-                soundfile.write(chapter_wav_path, final_audio, sample_rate)
-                end_time = time.time()
-                delta_seconds = end_time - start_time
-                chars_per_sec = len(text) / delta_seconds
-                processed_chars += len(text)
-                spinner.ok("✅")
-                print(f'Estimated time remaining: {strfdelta((total_chars - processed_chars) / chars_per_sec)}')
-                print('Chapter written to', chapter_wav_path)
-                if post_event: post_event('CORE_CHAPTER_FINISHED', chapter_index=chapter.chapter_index)
-                print(f'Chapter {i} read in {delta_seconds:.2f} seconds ({chars_per_sec:.0f} characters per second)')
-                progress = processed_chars * 100 // total_chars
-                print('Progress:', f'{progress}%\n')
-                if post_event: post_event('CORE_PROGRESS', progress=progress)
-            else:
-                spinner.fail("❌")
-                print(f'Warning: No audio generated for chapter {i}')
-                chapter_wav_files.remove(chapter_wav_path)
+        if post_event: post_event('CORE_CHAPTER_STARTED', chapter_index=chapter.chapter_index)
+        audio_segments = gen_audio_segments(
+            pipeline, text, voice, speed, stats, post_event=post_event, max_sentences=max_sentences)
+        if audio_segments:
+            final_audio = np.concatenate(audio_segments)
+            soundfile.write(chapter_wav_path, final_audio, sample_rate)
+            end_time = time.time()
+            delta_seconds = end_time - start_time
+            chars_per_sec = len(text) / delta_seconds
+            print('Chapter written to', chapter_wav_path)
+            if post_event: post_event('CORE_CHAPTER_FINISHED', chapter_index=chapter.chapter_index)
+            print(f'Chapter {i} read in {delta_seconds:.2f} seconds ({chars_per_sec:.0f} characters per second)')
+        else:
+            print(f'Warning: No audio generated for chapter {i}')
+            chapter_wav_files.remove(chapter_wav_path)
 
     if has_ffmpeg:
         create_index_file(title, creator, chapter_wav_files, output_folder)
@@ -160,7 +159,7 @@ def print_selected_chapters(document_chapters, chapters):
     ], headers=['#', 'Chapter', 'Text Length', 'Selected', 'First words']))
 
 
-def gen_audio_segments(pipeline, text, voice, speed, max_sentences=None):
+def gen_audio_segments(pipeline, text, voice, speed, stats=None, max_sentences=None, post_event=None):
     nlp = spacy.load('xx_ent_wiki_sm')
     nlp.add_pipe('sentencizer')
     audio_segments = []
@@ -170,6 +169,9 @@ def gen_audio_segments(pipeline, text, voice, speed, max_sentences=None):
         if max_sentences and i > max_sentences: break
         for gs, ps, audio in pipeline(sent.text, voice=voice, speed=speed, split_pattern=r'\n\n\n'):
             audio_segments.append(audio)
+        if stats: stats.processed_chars += len(sent.text)
+        if post_event: post_event('CORE_PROGRESS', progress=stats.processed_chars * 100 // stats.total_chars)
+        print_progress(stats)
     return audio_segments
 
 
