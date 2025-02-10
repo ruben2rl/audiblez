@@ -94,7 +94,7 @@ To do so, you can use `--pick` to interactively choose the chapters to convert (
 ## Help page
 For all the options available, you can check the help page `audiblez --help`:
 
-```bash
+```
 usage: audiblez [-h] [-v VOICE] [-p] [-s SPEED] [-c] [-o FOLDER] epub_file_path
 
 positional arguments:
