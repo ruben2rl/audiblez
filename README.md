@@ -20,24 +20,6 @@ On a Google Colab's T4 GPU via Cuda, **it takes about 5 minutes to convert "Anim
 
 On my M2 MacBook Pro, on CPU, it takes about 1 hour, at a rate of about 60 characters per second.
 
-## Voices Samples
-
-These are some samples of the voices available in Audiblez:
-
-| Voice                   | Sample    | Audio                                                                                                                                           |
-|-------------------------|-----------|-------------------------------------------------------------------------------------------------------------------------------------------------|
-| American English male   | af_heart  | <audio controls=""><source type="audio/mp4" src="https://github.com/santinic/audiblez/blob/main/samples/sample_af_heart.mp4?raw=true"></audio>  |
-| American English female | af_bella  | <audio controls=""><source type="audio/mp4" src="https://github.com/santinic/audiblez/blob/main/samples/sample_af_bella.mp4?raw=true"></audio>  |
-| British English female  | bf_emma   | <audio controls=""><source type="audio/mp4" src="https://github.com/santinic/audiblez/blob/main/samples/sample_bf_emma.mp4?raw=true"></audio>   |
-| British English male    | bm_george | <audio controls=""><source type="audio/mp4" src="https://github.com/santinic/audiblez/blob/main/samples/sample_bm_george.mp4?raw=true"></audio> |
-| Spanish female          | ef_dora   | <audio controls=""><source type="audio/mp4" src="https://github.com/santinic/audiblez/blob/main/samples/sample_ef_dora.mp4?raw=true"></audio>   |
-| Spanish male            | em_alex   | <audio controls=""><source type="audio/mp4" src="https://github.com/santinic/audiblez/blob/main/samples/sample_em_alex.mp4?raw=true"></audio>   |
-| French female           | ff_siwis  | <audio controls=""><source type="audio/mp4" src="https://github.com/santinic/audiblez/blob/main/samples/sample_ff_siwis.mp4?raw=true"></audio>  |
-| Hindi female            | hf_alpha  | <audio controls=""><source type="audio/mp4" src="https://github.com/santinic/audiblez/blob/main/samples/sample_hf_alpha.mp4?raw=true"></audio>  |
-| Hindi male              | hm_omega  | <audio controls=""><source type="audio/mp4" src="https://github.com/santinic/audiblez/blob/main/samples/sample_hm_omega.mp4?raw=true"></audio>  |
-| Italian female          | if_sara   | <audio controls=""><source type="audio/mp4" src="https://github.com/santinic/audiblez/blob/main/samples/sample_if_sara.mp4?raw=true"></audio>   |
-| Italian male            | im_nicola | <audio controls=""><source type="audio/mp4" src="https://github.com/santinic/audiblez/blob/main/samples/sample_im_nicola.mp4?raw=true"></audio> |
-| Japanese                | jf_alpha  | <audio controls=""><source type="audio/mp4" src="https://github.com/santinic/audiblez/blob/main/samples/sample_jf_alpha.mp4?raw=true"></audio>  |
 
 ## How to install and run
 
