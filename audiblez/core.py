@@ -1,37 +1,49 @@
 #!/usr/bin/env python3
+# -*- coding: utf-8 -*-
 # audiblez - A program to convert e-books into audiobooks using
 # Kokoro-82M model for high-quality text-to-speech synthesis.
 # by Claudio Santini 2025 - https://claudio.uk
-import torch
+import torch.cuda
 import spacy
 import ebooklib
 import soundfile
 import numpy as np
-import argparse
-import sys
 import time
 import shutil
 import subprocess
+import platform
 import re
+from io import StringIO
+from types import SimpleNamespace
+from markdown import Markdown
 from tabulate import tabulate
 from pathlib import Path
 from string import Formatter
-from yaspin import yaspin
 from bs4 import BeautifulSoup
 from kokoro import KPipeline
 from ebooklib import epub
 from pydub import AudioSegment
 from pick import pick
-from tempfile import NamedTemporaryFile
 
 sample_rate = 24000
 
 
-def main(file_path, voice, pick_manually, speed, max_chapters=None):
+def load_spacy():
     if not spacy.util.is_package("xx_ent_wiki_sm"):
         print("Downloading Spacy model xx_ent_wiki_sm...")
         spacy.cli.download("xx_ent_wiki_sm")
+
+
+def main(file_path, voice, pick_manually, speed, output_folder='.',
+         max_chapters=None, max_sentences=None, selected_chapters=None, post_event=None):
+    if post_event: post_event('CORE_STARTED')
+    load_spacy()
+    if output_folder != '.':
+        Path(output_folder).mkdir(parents=True, exist_ok=True)
+
     filename = Path(file_path).name
+
+    extension = '.epub'
     book = epub.read_epub(file_path)
     meta_title = book.get_metadata('DC', 'title')
     title = meta_title[0][0] if meta_title else ''
@@ -44,10 +56,12 @@ def main(file_path, voice, pick_manually, speed, max_chapters=None):
         print(f'Found cover image {cover_maybe.file_name} in {cover_maybe.media_type} format')
 
     document_chapters = find_document_chapters_and_extract_texts(book)
-    if pick_manually is True:
-        selected_chapters = pick_chapters(document_chapters)
-    else:
-        selected_chapters = find_good_chapters(document_chapters)
+
+    if not selected_chapters:
+        if pick_manually is True:
+            selected_chapters = pick_chapters(document_chapters)
+        else:
+            selected_chapters = find_good_chapters(document_chapters)
     print_selected_chapters(document_chapters, selected_chapters)
     texts = [c.extracted_text for c in selected_chapters]
 
@@ -55,56 +69,58 @@ def main(file_path, voice, pick_manually, speed, max_chapters=None):
     if not has_ffmpeg:
         print('\033[91m' + 'ffmpeg not found. Please install ffmpeg to create mp3 and m4b audiobook files.' + '\033[0m')
 
-    total_chars, processed_chars = sum(map(len, texts)), 0
+    stats = SimpleNamespace(
+        total_chars=sum(map(len, texts)),
+        processed_chars=0,
+        chars_per_sec=500 if torch.cuda.is_available() else 50)
     print('Started at:', time.strftime('%H:%M:%S'))
-    print(f'Total characters: {total_chars:,}')
+    print(f'Total characters: {stats.total_chars:,}')
     print('Total words:', len(' '.join(texts).split()))
-    chars_per_sec = 500 if torch.cuda.is_available() else 50
-    print(f'Estimated time remaining (assuming {chars_per_sec} chars/sec): {strfdelta((total_chars - processed_chars) / chars_per_sec)}')
+    eta = strfdelta((stats.total_chars - stats.processed_chars) / stats.chars_per_sec)
+    print(f'Estimated time remaining (assuming {stats.chars_per_sec} chars/sec): {eta}')
 
     chapter_wav_files = []
     for i, chapter in enumerate(selected_chapters, start=1):
         if max_chapters and i > max_chapters: break
         text = chapter.extracted_text
         xhtml_file_name = chapter.get_name().replace(' ', '_').replace('/', '_').replace('\\', '_')
-        chapter_filename = filename.replace('.epub', f'_chapter_{i}_{voice}_{xhtml_file_name}.wav')
-        chapter_wav_files.append(chapter_filename)
-        if Path(chapter_filename).exists():
+        chapter_wav_path = Path(output_folder) / filename.replace(extension, f'_chapter_{i}_{voice}_{xhtml_file_name}.wav')
+        chapter_wav_files.append(chapter_wav_path)
+        if Path(chapter_wav_path).exists():
             print(f'File for chapter {i} already exists. Skipping')
+            stats.processed_chars += len(text)
+            if post_event:
+                post_event('CORE_CHAPTER_FINISHED', chapter_index=chapter.chapter_index)
             continue
         if len(text.strip()) < 10:
             print(f'Skipping empty chapter {i}')
-            chapter_wav_files.remove(chapter_filename)
+            chapter_wav_files.remove(chapter_wav_path)
             continue
         if i == 1:
             # add intro text
             text = f'{title} – {creator}.\n\n' + text
         start_time = time.time()
         pipeline = KPipeline(lang_code=voice[0])  # a for american or b for british etc.
-
-        with yaspin(text=f'Reading chapter {i} ({len(text):,} characters)...', color="yellow") as spinner:
-            audio_segments = gen_audio_segments(pipeline, text, voice, speed)
-            if audio_segments:
-                final_audio = np.concatenate(audio_segments)
-                soundfile.write(chapter_filename, final_audio, sample_rate)
-                end_time = time.time()
-                delta_seconds = end_time - start_time
-                chars_per_sec = len(text) / delta_seconds
-                processed_chars += len(text)
-                spinner.ok("✅")
-                print(f'Estimated time remaining: {strfdelta((total_chars - processed_chars) / chars_per_sec)}')
-                print('Chapter written to', chapter_filename)
-                print(f'Chapter {i} read in {delta_seconds:.2f} seconds ({chars_per_sec:.0f} characters per second)')
-                progress = processed_chars * 100 // total_chars
-                print('Progress:', f'{progress}%\n')
-            else:
-                spinner.fail("❌")
-                print(f'Warning: No audio generated for chapter {i}')
-                chapter_wav_files.remove(chapter_filename)
+        if post_event: post_event('CORE_CHAPTER_STARTED', chapter_index=chapter.chapter_index)
+        audio_segments = gen_audio_segments(
+            pipeline, text, voice, speed, stats, post_event=post_event, max_sentences=max_sentences)
+        if audio_segments:
+            final_audio = np.concatenate(audio_segments)
+            soundfile.write(chapter_wav_path, final_audio, sample_rate)
+            end_time = time.time()
+            delta_seconds = end_time - start_time
+            chars_per_sec = len(text) / delta_seconds
+            print('Chapter written to', chapter_wav_path)
+            if post_event: post_event('CORE_CHAPTER_FINISHED', chapter_index=chapter.chapter_index)
+            print(f'Chapter {i} read in {delta_seconds:.2f} seconds ({chars_per_sec:.0f} characters per second)')
+        else:
+            print(f'Warning: No audio generated for chapter {i}')
+            chapter_wav_files.remove(chapter_wav_path)
 
     if has_ffmpeg:
-        create_index_file(title, creator, chapter_wav_files)
-        create_m4b(chapter_wav_files, filename, cover_image)
+        create_index_file(title, creator, chapter_wav_files, output_folder)
+        create_m4b(chapter_wav_files, filename, cover_image, output_folder)
+        if post_event: post_event('CORE_FINISHED')
 
 
 def find_cover(book):
@@ -131,21 +147,30 @@ def find_cover(book):
 
 
 def print_selected_chapters(document_chapters, chapters):
+    ok = 'X' if platform.system() == 'Windows' else '✅'
     print(tabulate([
-        [i, c.get_name(), len(c.extracted_text), '✅' if c in chapters else '', chapter_beginning_one_liner(c)]
+        [i, c.get_name(), len(c.extracted_text), ok if c in chapters else '', chapter_beginning_one_liner(c)]
         for i, c in enumerate(document_chapters, start=1)
     ], headers=['#', 'Chapter', 'Text Length', 'Selected', 'First words']))
 
 
-def gen_audio_segments(pipeline, text, voice, speed):
+def gen_audio_segments(pipeline, text, voice, speed, stats=None, max_sentences=None, post_event=None):
     nlp = spacy.load('xx_ent_wiki_sm')
     nlp.add_pipe('sentencizer')
     audio_segments = []
     doc = nlp(text)
     sentences = list(doc.sents)
-    for sent in sentences:
+    for i, sent in enumerate(sentences):
+        if max_sentences and i > max_sentences: break
         for gs, ps, audio in pipeline(sent.text, voice=voice, speed=speed, split_pattern=r'\n\n\n'):
             audio_segments.append(audio)
+        if stats:
+            stats.processed_chars += len(sent.text)
+            stats.progress = stats.processed_chars * 100 // stats.total_chars
+            stats.eta = strfdelta((stats.total_chars - stats.processed_chars) / stats.chars_per_sec)
+            if post_event: post_event('CORE_PROGRESS', stats=stats)
+            print(f'Estimated time remaining: {stats.eta}')
+            print('Progress:', f'{stats.progress}%\n')
     return audio_segments
 
 
@@ -164,6 +189,8 @@ def find_document_chapters_and_extract_texts(book):
                 text += '.'
             chapter.extracted_text += text + '\n'
         document_chapters.append(chapter)
+    for i, c in enumerate(document_chapters):
+        c.chapter_index = i  # this is used in the UI to identify chapters
     return document_chapters
 
 
@@ -218,28 +245,30 @@ def strfdelta(tdelta, fmt='{D:02}d {H:02}h {M:02}m {S:02}s'):
     return f.format(fmt, **values)
 
 
-def create_m4b(chapter_files, filename, cover_image):
-    tmp_filename = filename.replace('.epub', '.tmp.mp4')
-    if not Path(tmp_filename).exists():
+def create_m4b(chapter_files, filename, cover_image, output_folder):
+    tmp_file_path = Path(output_folder) / filename.replace('.epub', '.tmp.mp4')
+    if not tmp_file_path.exists():
         combined_audio = AudioSegment.empty()
         for wav_file in chapter_files:
             audio = AudioSegment.from_wav(wav_file)
             combined_audio += audio
         print('Converting to Mp4...')
-        combined_audio.export(tmp_filename, format="mp4", codec="aac", bitrate="64k")
-    final_filename = filename.replace('.epub', '.m4b')
+        combined_audio.export(tmp_file_path, format="mp4", codec="aac", bitrate="64k")
+    final_filename = Path(output_folder) / filename.replace('.epub', '.m4b')
     print('Creating M4B file...')
 
     if cover_image:
-        cover_image_file = NamedTemporaryFile("wb", delete=False)
-        cover_image_file.write(cover_image)
-        cover_image_args = ["-i", cover_image_file.name, "-map", "0:a", "-map", "2:v"]
+        cover_file_path = Path(output_folder) / 'cover'
+        with open(cover_file_path, 'wb') as f:
+            f.write(cover_image)
+        cover_image_args = ["-i", cover_file_path.name, "-map", "0:a", "-map", "2:v"]
     else:
         cover_image_args = []
 
     proc = subprocess.run([
         'ffmpeg',
-        '-i', f'{tmp_filename}',
+        '-y',
+        '-i', f'{tmp_file_path}',
         '-i', 'chapters.txt',
         *cover_image_args,
         '-map', '0',
@@ -251,7 +280,7 @@ def create_m4b(chapter_files, filename, cover_image):
         '-f', 'mp4',
         f'{final_filename}'
     ])
-    Path(tmp_filename).unlink()
+    Path(tmp_file_path).unlink()
     if proc.returncode == 0:
         print(f'{final_filename} created. Enjoy your audiobook.')
         print('Feel free to delete the intermediary .wav chapter files, the .m4b is all you need.')
@@ -263,8 +292,8 @@ def probe_duration(file_name):
     return float(proc.stdout.strip())
 
 
-def create_index_file(title, creator, chapter_mp3_files):
-    with open("chapters.txt", "w") as f:
+def create_index_file(title, creator, chapter_mp3_files, output_folder):
+    with open(Path(output_folder) / "chapters.txt", "w") as f:
         f.write(f";FFMETADATA1\ntitle={title}\nartist={creator}\n\n")
         start = 0
         i = 0
@@ -276,54 +305,22 @@ def create_index_file(title, creator, chapter_mp3_files):
             start = end
 
 
-def cli_main():
-    voices_str = ', '.join(voices)
-    epilog = ('example:\n' +
-              '  audiblez book.epub -l en-us -v af_sky\n\n' +
-              'available voices:\n' +
-              available_voices_str)
-    default_voice = 'af_sky'
-    parser = argparse.ArgumentParser(epilog=epilog, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('epub_file_path', help='Path to the epub file')
-    parser.add_argument('-v', '--voice', default=default_voice, help=f'Choose narrating voice: {voices_str}')
-    parser.add_argument('-p', '--pick', default=False, help=f'Interactively select which chapters to read in the audiobook', action='store_true')
-    parser.add_argument('-s', '--speed', default=1.0, help=f'Set speed from 0.5 to 2.0', type=float)
-    parser.add_argument('-c', '--cuda', default=False, help=f'Use GPU via Cuda in Torch if available', action='store_true')
-
-    if len(sys.argv) == 1:
-        parser.print_help(sys.stderr)
-        sys.exit(1)
-    args = parser.parse_args()
-
-    if args.cuda:
-        if torch.cuda.is_available():
-            print('CUDA GPU available')
-            torch.set_default_device('cuda')
-        else:
-            print('CUDA GPU not available. Defaulting to CPU')
-
-    main(args.epub_file_path, args.voice, args.pick, args.speed)
+def unmark_element(element, stream=None):
+    """auxiliarry function to unmark markdown text"""
+    if stream is None:
+        stream = StringIO()
+    if element.text:
+        stream.write(element.text)
+    for sub in element:
+        unmark_element(sub, stream)
+    if element.tail:
+        stream.write(element.tail)
+    return stream.getvalue()
 
 
-flags = {'a': '🇺🇸', 'b': '🇬🇧', 'e': '🇪🇸', 'f': '🇫🇷', 'h': '🇮🇳', 'i': '🇮🇹', 'j': '🇯🇵', 'p': '🇧🇷', 'z': '🇨🇳'}
-
-voices = {
-    'a': ['af_alloy', 'af_aoede', 'af_bella', 'af_heart', 'af_jessica', 'af_kore', 'af_nicole', 'af_nova',
-          'af_river', 'af_sarah', 'af_sky', 'am_adam', 'am_echo', 'am_eric', 'am_fenrir', 'am_liam',
-          'am_michael', 'am_onyx', 'am_puck', 'am_santa'],
-    'b': ['bf_alice', 'bf_emma', 'bf_isabella', 'bf_lily', 'bm_daniel', 'bm_fable', 'bm_george', 'bm_lewis'],
-    'e': ['ef_dora', 'em_alex', 'em_santa'],
-    'f': ['ff_siwis'],
-    'h': ['hf_alpha', 'hf_beta', 'hm_omega', 'hm_psi'],
-    'i': ['if_sara', 'im_nicola'],
-    'j': ['jf_alpha', 'jf_gongitsune', 'jf_nezumi', 'jf_tebukuro', 'jm_kumo'],
-    'p': ['pf_dora', 'pm_alex', 'pm_santa'],
-    'z': ['zf_xiaobei', 'zf_xiaoni', 'zf_xiaoxiao', 'zf_xiaoyi', 'zm_yunjian', 'zm_yunxi', 'zm_yunxia',
-          'zm_yunyang']
-}
-
-available_voices_str = ('\n'.join([f'  {flags[lang]} {", ".join(voices[lang])}' for lang in voices])
-                        .replace(' af_sky,', '\n       af_sky,'))
-
-if __name__ == '__main__':
-    cli_main()
+def unmark(text):
+    """Unmark markdown text"""
+    Markdown.output_formats["plain"] = unmark_element  # patching Markdown
+    __md = Markdown(output_format="plain")
+    __md.stripTopLevelTags = False
+    return __md.convert(text)

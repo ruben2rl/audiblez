@@ -1,11 +1,13 @@
-# Audiblez: Generate  audiobooks from e-books 
+# Audiblez: Generate  audiobooks from e-books
 
 [![Installing via pip and running](https://github.com/santinic/audiblez/actions/workflows/pip-install.yaml/badge.svg)](https://github.com/santinic/audiblez/actions/workflows/pip-install.yaml)
 [![Git clone and run](https://github.com/santinic/audiblez/actions/workflows/git-clone-and-run.yml/badge.svg)](https://github.com/santinic/audiblez/actions/workflows/git-clone-and-run.yml)
 ![PyPI - Python Version](https://img.shields.io/pypi/pyversions/audiblez)
 ![PyPI - Version](https://img.shields.io/pypi/v/audiblez)
 
-### v3 Now with CUDA support and many more languages!
+### v4 Now with Graphical interface, CUDA support, and many languages!
+
+![Audiblez GUI on MacOSX](./imgs/mac.png)
 
 Audiblez generates `.m4b` audiobooks from regular `.epub` e-books,
 using Kokoro's high-quality speech synthesis.
@@ -24,13 +26,22 @@ If you have Python 3 on your computer, you can install it with pip.
 You also need `espeak-ng` and `ffmpeg` installed on your machine:
 
 ```bash
+sudo apt install ffmpeg espeak-ng libgtk-3-dev      # on Ubuntu/Debian 🐧
 pip install audiblez
-
-sudo apt install ffmpeg espeak-ng     # on Ubuntu/Debian 🐧
-brew install ffmpeg espeak-ng         # on Mac 🍏
 ```
 
-Then, to convert an epub file into an audiobook, just run:
+```python
+brew install ffmpeg espeak-ng                       # on Mac 🍏
+pip install audiblez
+```
+
+Then, to run the graphical interface, just type:
+
+```bash
+audiblez-ui
+```
+
+If you prefer the command-line instead, you can convert an .epub directly with:
 
 ```bash
 audiblez book.epub -v af_sky
@@ -51,21 +62,20 @@ audiblez book.epub -v af_sky -s 1.5
 
 ## Supported Voices
 
-Use `-v` option to specify the voice to use. Available voices are listed here. 
+Use `-v` option to specify the voice to use. Available voices are listed here.
 The first letter is the language code and the second is the gender of the speaker e.g. `im_nicola` is an italian male voice.
 
-| Language | Voices |
-|----------|--------|
-| 🇺🇸 | `af_alloy`, `af_aoede`, `af_bella`, `af_heart`, `af_jessica`, `af_kore`, `af_nicole`, `af_nova`, `af_river`, `af_sarah`, `af_sky`, `am_adam`, `am_echo`, `am_eric`, `am_fenrir`, `am_liam`, `am_michael`, `am_onyx`, `am_puck`, `am_santa` |
-| 🇬🇧 | `bf_alice`, `bf_emma`, `bf_isabella`, `bf_lily`, `bm_daniel`, `bm_fable`, `bm_george`, `bm_lewis` |
-| 🇪🇸 | `ef_dora`, `em_alex`, `em_santa` |
-| 🇫🇷 | `ff_siwis` |
-| 🇮🇳 | `hf_alpha`, `hf_beta`, `hm_omega`, `hm_psi` |
-| 🇮🇹 | `if_sara`, `im_nicola` |
-| 🇯🇵 | `jf_alpha`, `jf_gongitsune`, `jf_nezumi`, `jf_tebukuro`, `jm_kumo` |
-| 🇧🇷 | `pf_dora`, `pm_alex`, `pm_santa` |
-| 🇨🇳 | `zf_xiaobei`, `zf_xiaoni`, `zf_xiaoxiao`, `zf_xiaoyi`, `zm_yunjian`, `zm_yunxi`, `zm_yunxia`, `zm_yunyang` |
-
+| Language | Voices                                                                                                                                                                                                                                     |
+|----------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
+| 🇺🇸     | `af_alloy`, `af_aoede`, `af_bella`, `af_heart`, `af_jessica`, `af_kore`, `af_nicole`, `af_nova`, `af_river`, `af_sarah`, `af_sky`, `am_adam`, `am_echo`, `am_eric`, `am_fenrir`, `am_liam`, `am_michael`, `am_onyx`, `am_puck`, `am_santa` |
+| 🇬🇧     | `bf_alice`, `bf_emma`, `bf_isabella`, `bf_lily`, `bm_daniel`, `bm_fable`, `bm_george`, `bm_lewis`                                                                                                                                          |
+| 🇪🇸     | `ef_dora`, `em_alex`, `em_santa`                                                                                                                                                                                                           |
+| 🇫🇷     | `ff_siwis`                                                                                                                                                                                                                                 |
+| 🇮🇳     | `hf_alpha`, `hf_beta`, `hm_omega`, `hm_psi`                                                                                                                                                                                                |
+| 🇮🇹     | `if_sara`, `im_nicola`                                                                                                                                                                                                                     |
+| 🇯🇵     | `jf_alpha`, `jf_gongitsune`, `jf_nezumi`, `jf_tebukuro`, `jm_kumo`                                                                                                                                                                         |
+| 🇧🇷     | `pf_dora`, `pm_alex`, `pm_santa`                                                                                                                                                                                                           |
+| 🇨🇳     | `zf_xiaobei`, `zf_xiaoni`, `zf_xiaoxiao`, `zf_xiaoyi`, `zm_yunjian`, `zm_yunxi`, `zm_yunxia`, `zm_yunyang`                                                                                                                                 |
 
 ## How to run on GPU
 
@@ -78,8 +88,35 @@ We don't currently support Apple Silicon, as there is not yet a Kokoro implement
 ## Manually pick chapters to convert
 
 Sometimes you want to manually select which chapters/sections in the e-book to read out loud.
-To do so, you can use `--pick` to interactively choose the chapters to convert.
+To do so, you can use `--pick` to interactively choose the chapters to convert (without running the GUI).
 
+
+## Help page
+For all the options available, you can check the help page `audiblez --help`:
+
+```bash
+usage: audiblez [-h] [-v VOICE] [-p] [-s SPEED] [-c] [-o FOLDER] epub_file_path
+
+positional arguments:
+  epub_file_path        Path to the epub file
+
+options:
+  -h, --help            show this help message and exit
+  -v VOICE, --voice VOICE
+                        Choose narrating voice: a, b, e, f, h, i, j, p, z
+  -p, --pick            Interactively select which chapters to read in the audiobook
+  -s SPEED, --speed SPEED
+                        Set speed from 0.5 to 2.0
+  -c, --cuda            Use GPU via Cuda in Torch if available
+  -o FOLDER, --output FOLDER
+                        Output folder for the audiobook and temporary files
+
+example:
+  audiblez book.epub -l en-us -v af_sky
+
+to use the GUI, run:
+  audiblez-ui
+```
 
 ## Author
 
