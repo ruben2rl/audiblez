@@ -21,7 +21,7 @@ On a Google Colab's T4 GPU via Cuda, **it takes about 5 minutes to convert "Anim
 On my M2 MacBook Pro, on CPU, it takes about 1 hour, at a rate of about 60 characters per second.
 
 
-## How to install the Command Line toool
+## How to install the Command Line tool
 
 If you have Python 3 on your computer, you can install it with pip.
 You also need `espeak-ng` and `ffmpeg` installed on your machine:
