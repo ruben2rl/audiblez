@@ -21,13 +21,13 @@ On a Google Colab's T4 GPU via Cuda, **it takes about 5 minutes to convert "Anim
 On my M2 MacBook Pro, on CPU, it takes about 1 hour, at a rate of about 60 characters per second.
 
 
-## How to install and run
+## How to install the Command Line toool
 
 If you have Python 3 on your computer, you can install it with pip.
 You also need `espeak-ng` and `ffmpeg` installed on your machine:
 
 ```bash
-sudo apt install ffmpeg espeak-ng libgtk-3-dev      # on Ubuntu/Debian 🐧
+sudo apt install ffmpeg espeak-ng                   # on Ubuntu/Debian 🐧
 pip install audiblez
 ```
 
@@ -36,13 +36,7 @@ brew install ffmpeg espeak-ng                       # on Mac 🍏
 pip install audiblez
 ```
 
-Then, to run the graphical interface, just type:
-
-```
-audiblez-ui
-```
-
-If you prefer the command-line instead, you can convert an .epub directly with:
+Then you can convert an .epub directly with:
 
 ```
 audiblez book.epub -v af_sky
@@ -52,6 +46,24 @@ It will first create a bunch of `book_chapter_1.wav`, `book_chapter_2.wav`, etc.
 and at the end it will produce a `book.m4b` file with the whole book you can listen with VLC or any
 audiobook player.
 It will only produce the `.m4b` file if you have `ffmpeg` installed on your machine.
+
+## How to run the GUI
+
+The GUI is a simple interface to convert an epub file to an audiobook.
+You need some extra dependencies to run the GUI.
+
+```
+sudo apt install ffmpeg espeak-ng 
+sudo apt install libgtk-3-dev               # just for Ubuntu/Debian 🐧, Windows/Mac don't need this
+  
+pip install audiblez pillow wxpython
+```
+
+Then you can run the GUI with:
+```
+audiblez-ui
+```
+
 
 ## Speed
 
