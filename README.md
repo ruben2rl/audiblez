@@ -54,7 +54,7 @@ You need some extra dependencies to run the GUI.
 
 ```
 sudo apt install ffmpeg espeak-ng 
-sudo apt install libgtk-3-dev               # just for Ubuntu/Debian 🐧, Windows/Mac don't need this
+sudo apt install libgtk-3-dev        # just for Ubuntu/Debian 🐧, Windows/Mac don't need this
   
 pip install audiblez pillow wxpython
 ```
