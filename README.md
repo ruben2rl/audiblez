@@ -49,8 +49,8 @@ It will only produce the `.m4b` file if you have `ffmpeg` installed on your mach
 
 ## How to run the GUI
 
-The GUI is a simple interface to convert an epub file to an audiobook.
-You need some extra dependencies to run the GUI.
+The GUI is a simple graphical interface to use audiblez.
+You need some extra dependencies to run the GUI:
 
 ```
 sudo apt install ffmpeg espeak-ng 
