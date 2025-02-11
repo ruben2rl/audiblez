@@ -78,6 +78,8 @@ audiblez book.epub -v af_sky -s 1.5
 Use `-v` option to specify the voice to use. Available voices are listed here.
 The first letter is the language code and the second is the gender of the speaker e.g. `im_nicola` is an italian male voice.
 
+[For hearing samples of Kokoro-82M voices, go here](https://claudio.uk/posts/audiblez-v4.html)
+
 | Language                  | Voices                                                                                                                                                                                                                                     |
 |---------------------------|--------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------|
 | 🇺🇸 American English     | `af_alloy`, `af_aoede`, `af_bella`, `af_heart`, `af_jessica`, `af_kore`, `af_nicole`, `af_nova`, `af_river`, `af_sarah`, `af_sky`, `am_adam`, `am_echo`, `am_eric`, `am_fenrir`, `am_liam`, `am_michael`, `am_onyx`, `am_puck`, `am_santa` |
@@ -137,3 +139,4 @@ to use the GUI, run:
 
 by [Claudio Santini](https://claudio.uk) in 2025, distributed under MIT licence.
 
+Related Article: [Audiblez v4: Generate Audiobooks from E-books](https://claudio.uk/posts/audiblez-v4.html)
