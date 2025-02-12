@@ -64,6 +64,19 @@ Then you can run the GUI with:
 audiblez-ui
 ```
 
+## How to run on Windows
+
+After many trials, on Windows we recommend to install audiblez in a Python venv:
+
+1. Open a Windows terminal
+2. Create anew folder: `mkdir audiblez`
+3. Enter the folder: `cd audiblez`
+4. Create a venv: `python -m venv venv`
+5. Activate the venv: `.\venv\Scripts\Activate.ps1`
+6. Install the dependencies: `pip install audiblez pillow wxpython`
+7. Now you can run `audiblez` or `audiblez-ui`
+8. For Cuda support, you need to install Pytorch accordingly: https://pytorch.org/get-started/locally/
+
 
 ## Speed
 
@@ -106,6 +119,7 @@ We don't currently support Apple Silicon, as there is not yet a Kokoro implement
 
 Sometimes you want to manually select which chapters/sections in the e-book to read out loud.
 To do so, you can use `--pick` to interactively choose the chapters to convert (without running the GUI).
+
 
 ## Help page
 
