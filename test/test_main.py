@@ -2,11 +2,13 @@ import os
 import unittest
 from pathlib import Path
 
-from audiblez.core import main
+from ebooklib import epub
+
+from audiblez.core import main, find_document_chapters_and_extract_texts
 
 
 class MainTest(unittest.TestCase):
-    def base(self, name, url, **kwargs):
+    def base(self, name, url='', **kwargs):
         if not Path(f'{name}.epub').exists():
             os.system(f'wget {url} -O {name}.epub')
         Path(f'{name}.m4b').unlink(missing_ok=True)
@@ -42,3 +44,9 @@ class MainTest(unittest.TestCase):
     def test_chinese(self):
         url = 'https://www.gutenberg.org/ebooks/24225.epub3.images'
         self.base('chinese', url, voice='zf_xiaobei')
+
+    def test_leigh(self):
+        book = epub.read_epub('leigh.epub')
+        document_chapters = find_document_chapters_and_extract_texts(book)
+        chapters = [c for c in document_chapters if c.get_name() == 'Text/Chap07.xhtml']
+        self.base('leigh', voice='af_heart', selected_chapters=chapters, max_sentences=5)

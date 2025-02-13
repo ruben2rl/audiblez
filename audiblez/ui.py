@@ -495,7 +495,7 @@ class MainWindow(wx.Frame):
             tmp_preview_wav_file = NamedTemporaryFile(suffix='.wav', delete=False)
             soundfile.write(tmp_preview_wav_file, final_audio, core.sample_rate)
             cmd = ['ffplay', '-autoexit', '-nodisp', tmp_preview_wav_file.name]
-            subprocess.Popen(' '.join(cmd), stdout=subprocess.PIPE, shell=True, preexec_fn=os.setsid)
+            subprocess.run(cmd)
             button.SetLabel("🔊 Preview")
             button.Enable()
 

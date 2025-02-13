@@ -174,6 +174,18 @@ def gen_audio_segments(pipeline, text, voice, speed, stats=None, max_sentences=N
     return audio_segments
 
 
+def gen_text(text, voice='af_heart', output_file='text.wav', speed=1, play=False):
+    lang_code = voice[:1]
+    pipeline = KPipeline(lang_code=lang_code)
+    load_spacy()
+    audio_segments = gen_audio_segments(pipeline, text, voice=voice, speed=speed);
+    final_audio = np.concatenate(audio_segments)
+    soundfile.write(output_file, final_audio, sample_rate)
+    if play:
+        subprocess.run(['ffplay', '-autoexit', '-nodisp', output_file])
+
+
+
 def find_document_chapters_and_extract_texts(book):
     """Returns every chapter that is an ITEM_DOCUMENT and enriches each chapter with extracted_text."""
     document_chapters = []
@@ -253,7 +265,7 @@ def create_m4b(chapter_files, filename, cover_image, output_folder):
             audio = AudioSegment.from_wav(wav_file)
             combined_audio += audio
         print('Converting to Mp4...')
-        combined_audio.export(tmp_file_path, format="mp4", codec="aac", bitrate="128k")
+        combined_audio.export(tmp_file_path, format="mp4", bitrate="128k")
     final_filename = Path(output_folder) / filename.replace('.epub', '.m4b')
     print('Creating M4B file...')
 
