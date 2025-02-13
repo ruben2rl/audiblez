@@ -253,7 +253,7 @@ def create_m4b(chapter_files, filename, cover_image, output_folder):
             audio = AudioSegment.from_wav(wav_file)
             combined_audio += audio
         print('Converting to Mp4...')
-        combined_audio.export(tmp_file_path, format="mp4", codec="aac", bitrate="64k")
+        combined_audio.export(tmp_file_path, format="mp4", codec="aac", bitrate="128k")
     final_filename = Path(output_folder) / filename.replace('.epub', '.m4b')
     print('Creating M4B file...')
 
