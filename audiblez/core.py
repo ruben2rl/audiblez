@@ -267,13 +267,14 @@ def create_m4b(chapter_files, filename, cover_image, output_folder):
         print('Converting to Mp4...')
         combined_audio.export(tmp_file_path, format="mp4", bitrate="128k")
     final_filename = Path(output_folder) / filename.replace('.epub', '.m4b')
+    chapters_txt_path = Path(output_folder) / "chapters.txt"
     print('Creating M4B file...')
 
     if cover_image:
         cover_file_path = Path(output_folder) / 'cover'
         with open(cover_file_path, 'wb') as f:
             f.write(cover_image)
-        cover_image_args = ["-i", cover_file_path.name, "-map", "0:a", "-map", "2:v"]
+        cover_image_args = ["-i", f'{cover_file_path}', "-map", "0:a", "-map", "2:v"]
     else:
         cover_image_args = []
 
@@ -281,7 +282,7 @@ def create_m4b(chapter_files, filename, cover_image, output_folder):
         'ffmpeg',
         '-y',
         '-i', f'{tmp_file_path}',
-        '-i', 'chapters.txt',
+        '-i', f'{chapters_txt_path}',
         *cover_image_args,
         '-map', '0',
         '-map_metadata', '1',
