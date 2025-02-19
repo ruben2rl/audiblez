@@ -1,4 +1,5 @@
 import os
+import subprocess
 import unittest
 from pathlib import Path
 
@@ -45,8 +46,10 @@ class MainTest(unittest.TestCase):
         url = 'https://www.gutenberg.org/ebooks/24225.epub3.images'
         self.base('chinese', url, voice='zf_xiaobei')
 
-    def test_leigh(self):
+    def test_leigh_and_play_result(self):
         book = epub.read_epub('leigh.epub')
         document_chapters = find_document_chapters_and_extract_texts(book)
         chapters = [c for c in document_chapters if c.get_name() == 'Text/Chap07.xhtml']
         self.base('leigh', voice='af_heart', selected_chapters=chapters, max_sentences=5)
+        subprocess.run(['ffplay', '-nodisp', '-autoexit', 'leigh.m4b'], check=True)
+

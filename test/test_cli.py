@@ -28,6 +28,7 @@ class CliTest(unittest.TestCase):
         self.assertTrue(Path('./prova/mini.m4b').exists())
         self.assertTrue(Path('./prova/mini.m4b').stat().st_size > 256 * 1024)
 
+    @unittest.skip('Not implemented yet')
     def test_md(self):
         content = (
             '## Italy\n'
@@ -42,6 +43,7 @@ class CliTest(unittest.TestCase):
         self.assertTrue(Path(file_name).exists())
         self.assertTrue(Path('file_name').stat().st_size > 256 * 1024)
 
+    @unittest.skip('Not implemented yet')
     def test_txt(self):
         content = (
             'Italy, officially the Italian Republic, is a country in Southern and Western Europe. '

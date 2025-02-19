@@ -185,7 +185,6 @@ def gen_text(text, voice='af_heart', output_file='text.wav', speed=1, play=False
         subprocess.run(['ffplay', '-autoexit', '-nodisp', output_file])
 
 
-
 def find_document_chapters_and_extract_texts(book):
     """Returns every chapter that is an ITEM_DOCUMENT and enriches each chapter with extracted_text."""
     document_chapters = []
@@ -305,7 +304,7 @@ def probe_duration(file_name):
 
 
 def create_index_file(title, creator, chapter_mp3_files, output_folder):
-    with open(Path(output_folder) / "chapters.txt", "w") as f:
+    with open(Path(output_folder) / "chapters.txt", "w", encoding="utf-8") as f:
         f.write(f";FFMETADATA1\ntitle={title}\nartist={creator}\n\n")
         start = 0
         i = 0
