@@ -99,6 +99,8 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
     print('Total words:', len(' '.join(texts).split()))
     eta = strfdelta((stats.total_chars - stats.processed_chars) / stats.chars_per_sec)
     print(f'Estimated time remaining (assuming {stats.chars_per_sec} chars/sec): {eta}')
+    set_espeak_library()
+    pipeline = KPipeline(lang_code=voice[0])  # a for american or b for british etc.
 
     chapter_wav_files = []
     for i, chapter in enumerate(selected_chapters, start=1):
@@ -121,8 +123,6 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
             # add intro text
             text = f'{title} – {creator}.\n\n' + text
         start_time = time.time()
-        set_espeak_library()
-        pipeline = KPipeline(lang_code=voice[0])  # a for american or b for british etc.
         if post_event: post_event('CORE_CHAPTER_STARTED', chapter_index=chapter.chapter_index)
         audio_segments = gen_audio_segments(
             pipeline, text, voice, speed, stats, post_event=post_event, max_sentences=max_sentences)
