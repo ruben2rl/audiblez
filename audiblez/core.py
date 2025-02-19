@@ -3,6 +3,9 @@
 # audiblez - A program to convert e-books into audiobooks using
 # Kokoro-82M model for high-quality text-to-speech synthesis.
 # by Claudio Santini 2025 - https://claudio.uk
+import os
+from glob import glob
+
 import torch.cuda
 import spacy
 import ebooklib
@@ -32,6 +35,23 @@ def load_spacy():
     if not spacy.util.is_package("xx_ent_wiki_sm"):
         print("Downloading Spacy model xx_ent_wiki_sm...")
         spacy.cli.download("xx_ent_wiki_sm")
+
+
+def set_espeak_library():
+    """Find the espeak library path"""
+    if os.environ.get('ESPEAK_LIBRARY'):
+        library = os.environ['ESPEAK_LIBRARY']
+    elif platform.system() == 'Darwin':
+        library = glob('/opt/homebrew/Cellar/espeak-ng/*/lib/*.dylib')[0]
+    elif platform.system() == 'Linux':
+        library = glob('/usr/lib/*/libespeak-ng*')[0]
+    elif platform.system() == 'Windows':
+        library = 'C:\\Program Files*\\eSpeak NG\\libespeak-ng.dll'
+    else:
+        print('Unsupported OS, please set the espeak library path manually')
+        return
+    from phonemizer.backend.espeak.wrapper import EspeakWrapper
+    EspeakWrapper.set_library(library)
 
 
 def main(file_path, voice, pick_manually, speed, output_folder='.',
@@ -100,6 +120,7 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
             # add intro text
             text = f'{title} – {creator}.\n\n' + text
         start_time = time.time()
+        set_espeak_library()
         pipeline = KPipeline(lang_code=voice[0])  # a for american or b for british etc.
         if post_event: post_event('CORE_CHAPTER_STARTED', chapter_index=chapter.chapter_index)
         audio_segments = gen_audio_segments(

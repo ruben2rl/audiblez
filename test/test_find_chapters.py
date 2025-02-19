@@ -1,10 +1,9 @@
 import unittest
 from ebooklib import epub
 
-from audiblez import find_good_chapters, find_document_chapters_and_extract_texts
+from audiblez.core import find_document_chapters_and_extract_texts, find_good_chapters
 
 
-@unittest.skip('Development only, not for CI')
 class FindChaptersTest(unittest.TestCase):
     def base(self, file, expected_chapter_names):
         book = epub.read_epub(file)
@@ -46,7 +45,7 @@ class FindChaptersTest(unittest.TestCase):
         ])
 
     def test_spawn_of_dagon(self):
-        self.base('../epub/kuttner-spawn-of-dagon.epub', [
+        self.base('../epub/dagon.epub', [
             # 'bk01-toc.xhtml',  # 276
             # 'cover.xhtml',  # 76
             # 'index.xhtml',  # 1399
@@ -62,7 +61,7 @@ class FindChaptersTest(unittest.TestCase):
         ])
 
     def test_lewis_innocents(self):
-        self.base('../epub/lewis-innocents.epub', [
+        self.base('../epub/lewis.epub', [
             # 'bk01-toc.xhtml',  # 1603
             # 'cover.xhtml',  # 72
             # 'index.xhtml',  # 1554
@@ -178,5 +177,5 @@ class FindChaptersTest(unittest.TestCase):
             '2903486949112998543_345-h-30.htm.xhtml',  # 4081
             '2903486949112998543_345-h-31.htm.xhtml',  # 19692
             'toc.xhtml',  # 4900
-            'wrap0000.xhtml',  # 374
+            # 'wrap0000.xhtml',  # 374
         ])

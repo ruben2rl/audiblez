@@ -914,20 +914,20 @@ referencing = ">=0.31.0"
 
 [[package]]
 name = "kokoro"
-version = "0.7.9"
+version = "0.7.16"
 description = "TTS"
 optional = false
 python-versions = ">=3.7"
 groups = ["main"]
 files = [
-    {file = "kokoro-0.7.9-py3-none-any.whl", hash = "sha256:de2f4826daaca48da3b9d63d232e47db35047548029d0aae30c40aee3af90b5d"},
-    {file = "kokoro-0.7.9.tar.gz", hash = "sha256:62b32422b8985303d7c0e30a2465945ac896a1070d01e4cd5bd8f95f9bd4c73f"},
+    {file = "kokoro-0.7.16-py3-none-any.whl", hash = "sha256:27d8e8cfd6ec4fdad5caacb5e3fabd7b2576b778226c8cd0f92e1c33ff14f553"},
+    {file = "kokoro-0.7.16.tar.gz", hash = "sha256:c1cf957cfff76cbb6702f16a3cd15eea2a30c561f2c3b6b42107e39e6456316e"},
 ]
 
 [package.dependencies]
 huggingface-hub = "*"
 loguru = "*"
-misaki = {version = ">=0.7.9", extras = ["en"]}
+misaki = {version = ">=0.7.16", extras = ["en"]}
 numpy = "1.26.4"
 scipy = "*"
 torch = "*"
@@ -1341,14 +1341,14 @@ files = [
 
 [[package]]
 name = "misaki"
-version = "0.7.12"
+version = "0.7.17"
 description = "G2P engine for TTS"
 optional = false
 python-versions = "<3.13,>=3.8"
 groups = ["main"]
 files = [
-    {file = "misaki-0.7.12-py3-none-any.whl", hash = "sha256:bb71a0e85ff70557d96303560ac72ccf669a02fb126b3e0b38eed3215bb80b34"},
-    {file = "misaki-0.7.12.tar.gz", hash = "sha256:cfe714488012ab6beaad08077ce782559f9f0e019989df8bfa3ebc7674f7c33f"},
+    {file = "misaki-0.7.17-py3-none-any.whl", hash = "sha256:5c739a540e715c368f9dbcf3e99f814575853785d5ba0096956acabcf58be0cd"},
+    {file = "misaki-0.7.17.tar.gz", hash = "sha256:301ea5ee3bd6dfcf5539bbd55c928a1855cf1bf6a90a367362072348a0e4a16a"},
 ]
 
 [package.dependencies]
