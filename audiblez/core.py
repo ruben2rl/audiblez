@@ -50,6 +50,7 @@ def set_espeak_library():
     else:
         print('Unsupported OS, please set the espeak library path manually')
         return
+    print('Using espeak library:', library)
     from phonemizer.backend.espeak.wrapper import EspeakWrapper
     EspeakWrapper.set_library(library)
 
