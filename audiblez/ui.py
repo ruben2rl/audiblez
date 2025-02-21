@@ -213,7 +213,7 @@ class MainWindow(wx.Frame):
         self.right_sizer.Add(self.book_info_panel_box, 1, wx.ALL | wx.EXPAND, 5)
 
         self.book_info_panel = wx.Panel(self.book_info_panel_box, style=wx.BORDER_NONE)
-        self.book_info_sizer = wx.BoxSizer(wx.VERTICAL)
+        self.book_info_sizer = wx.BoxSizer(wx.HORIZONTAL)
         self.book_info_panel.SetSizer(self.book_info_sizer)
         book_info_panel_box_sizer.Add(self.book_info_panel, 1, wx.ALL | wx.EXPAND, 5)
 
@@ -401,12 +401,15 @@ class MainWindow(wx.Frame):
 
         # Update Cover
         cover = find_cover(book)
-        pil_image = Image.open(io.BytesIO(cover.content))
-        wx_img = wx.EmptyImage(pil_image.size[0], pil_image.size[1])
-        wx_img.SetData(pil_image.convert("RGB").tobytes())
-        cover_w = 200
-        wx_img.Rescale(cover_w, int(cover_w * wx_img.GetHeight() / wx_img.GetWidth()))
-        self.cover_bitmap.SetBitmap(wx_img.ConvertToBitmap())
+        if cover is not None:
+            pil_image = Image.open(io.BytesIO(cover.content))
+            wx_img = wx.EmptyImage(pil_image.size[0], pil_image.size[1])
+            wx_img.SetData(pil_image.convert("RGB").tobytes())
+            cover_h = 200
+            cover_w = int(cover_h * pil_image.size[0] / pil_image.size[1])
+            wx_img.Rescale(cover_w, cover_h)
+            self.cover_bitmap.SetBitmap(wx_img.ConvertToBitmap())
+            self.cover_bitmap.SetMaxSize((200, cover_h))
 
         chapters_panel = self.create_chapters_table_panel(good_chapters)
 

@@ -25,7 +25,6 @@ from string import Formatter
 from bs4 import BeautifulSoup
 from kokoro import KPipeline
 from ebooklib import epub
-from pydub import AudioSegment
 from pick import pick
 
 sample_rate = 24000
@@ -293,15 +292,19 @@ def strfdelta(tdelta, fmt='{D:02}d {H:02}h {M:02}m {S:02}s'):
     return f.format(fmt, **values)
 
 
-def create_m4b(chapter_files, filename, cover_image, output_folder):
-    tmp_file_path = Path(output_folder) / filename.replace('.epub', '.tmp.mp4')
-    if not tmp_file_path.exists():
-        combined_audio = AudioSegment.empty()
+def concat_wavs_with_ffmpeg(chapter_files, output_folder, filename):
+    wav_list_txt = Path(output_folder) / filename.replace('.epub', '_wav_list.txt')
+    with open(wav_list_txt, 'w') as f:
         for wav_file in chapter_files:
-            audio = AudioSegment.from_wav(wav_file)
-            combined_audio += audio
-        print('Converting to Mp4...')
-        combined_audio.export(tmp_file_path, format="mp4", bitrate="128k")
+            f.write(f"file '{wav_file}'\n")
+    concat_file_path = Path(output_folder) / filename.replace('.epub', '.tmp.mp4')
+    subprocess.run(['ffmpeg', '-y', '-f', 'concat', '-i', wav_list_txt, '-c', 'copy', concat_file_path])
+    Path(wav_list_txt).unlink()
+    return concat_file_path
+
+
+def create_m4b(chapter_files, filename, cover_image, output_folder):
+    concat_file_path = concat_wavs_with_ffmpeg(chapter_files, output_folder, filename)
     final_filename = Path(output_folder) / filename.replace('.epub', '.m4b')
     chapters_txt_path = Path(output_folder) / "chapters.txt"
     print('Creating M4B file...')
@@ -317,7 +320,7 @@ def create_m4b(chapter_files, filename, cover_image, output_folder):
     proc = subprocess.run([
         'ffmpeg',
         '-y',  # overwrite output file without asking
-        '-i', f'{tmp_file_path}',  # input 0 file (audio)
+        '-i', f'{concat_file_path}',  # input 0 file (audio)
         '-i', f'{chapters_txt_path}',  # input 1 file (chapters)
         *cover_image_args,  # cover image
         '-map', '0',  # map all streams from input 0
@@ -329,7 +332,7 @@ def create_m4b(chapter_files, filename, cover_image, output_folder):
         '-f', 'mp4',  # format
         f'{final_filename}'  # output file
     ])
-    Path(tmp_file_path).unlink()
+    Path(concat_file_path).unlink()
     if proc.returncode == 0:
         print(f'{final_filename} created. Enjoy your audiobook.')
         print('Feel free to delete the intermediary .wav chapter files, the .m4b is all you need.')

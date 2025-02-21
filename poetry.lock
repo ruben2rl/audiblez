@@ -1911,18 +1911,6 @@ dotenv = ["python-dotenv (>=0.10.4)"]
 email = ["email-validator (>=1.0.3)"]
 
 [[package]]
-name = "pydub"
-version = "0.25.1"
-description = "Manipulate audio with an simple and easy high level interface"
-optional = false
-python-versions = "*"
-groups = ["main"]
-files = [
-    {file = "pydub-0.25.1-py2.py3-none-any.whl", hash = "sha256:65617e33033874b59d87db603aa1ed450633288aefead953b30bded59cb599a6"},
-    {file = "pydub-0.25.1.tar.gz", hash = "sha256:980a33ce9949cab2a569606b65674d748ecbca4f0796887fd6f46173a7b0d30f"},
-]
-
-[[package]]
 name = "pylatexenc"
 version = "2.10"
 description = "Simple LaTeX parser providing latex-to-unicode and unicode-to-latex conversion"
@@ -3320,4 +3308,4 @@ type = ["pytest-mypy"]
 [metadata]
 lock-version = "2.1"
 python-versions = ">=3.9,<3.13"
-content-hash = "e7cbea83afc2d6733815cd5f7644ed7de5aa338bde564c9f1f93ece17ff2b2cd"
+content-hash = "85028073e2ad2933c354fe2fba38833bc6240a8a33571e59f72789b9ba2d3099"
