@@ -4,6 +4,7 @@
 # Kokoro-82M model for high-quality text-to-speech synthesis.
 # by Claudio Santini 2025 - https://claudio.uk
 import os
+import traceback
 from glob import glob
 
 import torch.cuda
@@ -18,7 +19,6 @@ import platform
 import re
 from io import StringIO
 from types import SimpleNamespace
-from markdown import Markdown
 from tabulate import tabulate
 from pathlib import Path
 from string import Formatter
@@ -39,20 +39,27 @@ def load_spacy():
 
 def set_espeak_library():
     """Find the espeak library path"""
-    if os.environ.get('ESPEAK_LIBRARY'):
-        library = os.environ['ESPEAK_LIBRARY']
-    elif platform.system() == 'Darwin':
-        library = glob('/opt/homebrew/Cellar/espeak-ng/*/lib/*.dylib')[0]
-    elif platform.system() == 'Linux':
-        library = glob('/usr/lib/*/libespeak-ng*')[0]
-    elif platform.system() == 'Windows':
-        library = 'C:\\Program Files*\\eSpeak NG\\libespeak-ng.dll'
-    else:
-        print('Unsupported OS, please set the espeak library path manually')
-        return
-    print('Using espeak library:', library)
-    from phonemizer.backend.espeak.wrapper import EspeakWrapper
-    EspeakWrapper.set_library(library)
+    try:
+        if os.environ.get('ESPEAK_LIBRARY'):
+            library = os.environ['ESPEAK_LIBRARY']
+        elif platform.system() == 'Darwin':
+            library = glob('/opt/homebrew/Cellar/espeak-ng/*/lib/*.dylib')[0]
+        elif platform.system() == 'Linux':
+            library = glob('/usr/lib/*/libespeak-ng*')[0]
+        elif platform.system() == 'Windows':
+            library = 'C:\\Program Files*\\eSpeak NG\\libespeak-ng.dll'
+        else:
+            print('Unsupported OS, please set the espeak library path manually')
+            return
+        print('Using espeak library:', library)
+        from phonemizer.backend.espeak.wrapper import EspeakWrapper
+        EspeakWrapper.set_library(library)
+    except Exception:
+        traceback.print_exc()
+        print("Error finding espeak-ng library:")
+        print("Probably you haven't installed espeak-ng.")
+        print("On Mac: brew install espeak-ng")
+        print("On Linux: sudo apt install espeak-ng")
 
 
 def main(file_path, voice, pick_manually, speed, output_folder='.',
@@ -301,18 +308,18 @@ def create_m4b(chapter_files, filename, cover_image, output_folder):
 
     proc = subprocess.run([
         'ffmpeg',
-        '-y',
-        '-i', f'{tmp_file_path}',
-        '-i', f'{chapters_txt_path}',
-        *cover_image_args,
-        '-map', '0',
-        '-map_metadata', '1',
-        '-c:a', 'copy',
-        '-c:v', 'copy',
-        '-disposition:v', 'attached_pic',
-        '-c', 'copy',
-        '-f', 'mp4',
-        f'{final_filename}'
+        '-y',  # overwrite output file without asking
+        '-i', f'{tmp_file_path}',  # input 0 file (audio)
+        '-i', f'{chapters_txt_path}',  # input 1 file (chapters)
+        *cover_image_args,  # cover image
+        '-map', '0',  # map all streams from input 0
+        '-map_metadata', '1',  # map metadata from input 1
+        '-c:a', 'copy',  # copy audio codec
+        '-c:v', 'copy',  # copy video codec
+        '-disposition:v', 'attached_pic',  # attach cover image
+        '-c', 'copy',  # copy codec
+        '-f', 'mp4',  # format
+        f'{final_filename}'  # output file
     ])
     Path(tmp_file_path).unlink()
     if proc.returncode == 0:
