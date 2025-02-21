@@ -42,7 +42,14 @@ def set_espeak_library():
     if os.environ.get('ESPEAK_LIBRARY'):
         library = os.environ['ESPEAK_LIBRARY']
     elif platform.system() == 'Darwin':
-        library = glob('/opt/homebrew/Cellar/espeak-ng/*/lib/*.dylib')[0]
+        from subprocess import check_output
+        try:
+            cellar = Path(check_output(["brew", "--cellar"], text=True).strip())
+            pattern = cellar / "espeak-ng" / "*" / "lib" / "*.dylib"
+            if not (library := next(iter(glob(str(pattern))), None)):
+                raise RuntimeError("No espeak-ng library found; please set the path manually")
+        except (subprocess.CalledProcessError, FileNotFoundError) as e:
+            raise RuntimeError("Cannot locate Homebrew Cellar. Is 'brew' installed and in PATH?") from e
     elif platform.system() == 'Linux':
         library = glob('/usr/lib/*/libespeak-ng*')[0]
     elif platform.system() == 'Windows':
