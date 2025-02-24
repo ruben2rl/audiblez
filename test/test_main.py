@@ -33,10 +33,10 @@ class MainTest(unittest.TestCase):
         url = 'https://archive.org/download/AnimalFarmByGeorgeOrwell/Animal%20Farm%20by%20George%20Orwell.epub'
         self.base('orwell', url)
 
-    def test_italian_pirandello(self):
+    def test_italian_pirandello_and_filename_with_spaces(self):
         url = 'https://www.liberliber.eu/mediateca/libri/p/pirandello/cosi_e_se_vi_pare_1925/epub/pirandello_cosi_e_se_vi_pare_1925.epub'
-        self.base('pirandello', url, voice='im_nicola')
-        self.assertTrue(Path('pirandello.m4b').exists())
+        self.base('pirandello e spazio', url, voice='im_nicola')
+        self.assertTrue(Path('pirandello e spazio.m4b').exists())
 
     def test_italian_manzoni(self):
         url = 'https://www.liberliber.eu/mediateca/libri/m/manzoni/i_promessi_sposi/epub/manzoni_i_promessi_sposi.epub'
