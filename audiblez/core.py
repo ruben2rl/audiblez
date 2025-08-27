@@ -26,8 +26,13 @@ from bs4 import BeautifulSoup
 from kokoro import KPipeline
 from ebooklib import epub
 from pick import pick
+# MODIFICATION 1: Import voice validation functions
+from audiblez.voices import validate_voice, is_voice_blend
 
 sample_rate = 24000
+
+# MODIFICATION 2: Store kokoro instance globally to pass to validate_voice
+_kokoro_instance = None
 
 
 def load_spacy():
@@ -71,6 +76,8 @@ def set_espeak_library():
 
 def main(file_path, voice, pick_manually, speed, output_folder='.',
          max_chapters=None, max_sentences=None, selected_chapters=None, post_event=None):
+    global _kokoro_instance
+    
     if post_event: post_event('CORE_STARTED')
     load_spacy()
     if output_folder != '.':
@@ -114,14 +121,30 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
     eta = strfdelta((stats.total_chars - stats.processed_chars) / stats.chars_per_sec)
     print(f'Estimated time remaining (assuming {stats.chars_per_sec} chars/sec): {eta}')
     set_espeak_library()
-    pipeline = KPipeline(lang_code=voice[0])  # a for american or b for british etc.
+    
+    # MODIFICATION 3: Initialize pipeline and validate voice
+    lang_code = voice[0] if not is_voice_blend(voice) else voice.split(',')[0][0]  # Get lang from first voice in blend
+    pipeline = KPipeline(lang_code=lang_code)
+    _kokoro_instance = pipeline  # Store for validate_voice
+    
+    # MODIFICATION 4: Validate voice (handles both single and blended voices)
+    try:
+        validated_voice = validate_voice(voice, pipeline)
+        print(f"Using voice: {voice}")
+    except Exception as e:
+        print(f"Voice validation error: {e}")
+        from audiblez.voices import available_voices_str
+        print(f"\nAvailable voices:\n{available_voices_str}")
+        return  # Exit if voice is invalid
 
     chapter_wav_files = []
     for i, chapter in enumerate(selected_chapters, start=1):
         if max_chapters and i > max_chapters: break
         text = chapter.extracted_text
         xhtml_file_name = chapter.get_name().replace(' ', '_').replace('/', '_').replace('\\', '_')
-        chapter_wav_path = Path(output_folder) / filename.replace(extension, f'_chapter_{i}_{voice}_{xhtml_file_name}.wav')
+        # MODIFICATION 5: Update filename to handle blend notation safely
+        safe_voice_name = voice.replace(':', '-').replace(',', '+')
+        chapter_wav_path = Path(output_folder) / filename.replace(extension, f'_chapter_{i}_{safe_voice_name}_{xhtml_file_name}.wav')
         chapter_wav_files.append(chapter_wav_path)
         if Path(chapter_wav_path).exists():
             print(f'File for chapter {i} already exists. Skipping')
@@ -135,11 +158,13 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
             continue
         if i == 1:
             # add intro text
-            text = f'{title} – {creator}.\n\n' + text
+            text = f'{title} â€" {creator}.\n\n' + text
         start_time = time.time()
         if post_event: post_event('CORE_CHAPTER_STARTED', chapter_index=chapter.chapter_index)
+        
+        # MODIFICATION 6: Pass validated_voice instead of original voice
         audio_segments = gen_audio_segments(
-            pipeline, text, voice, speed, stats, post_event=post_event, max_sentences=max_sentences)
+            pipeline, text, validated_voice, speed, stats, post_event=post_event, max_sentences=max_sentences)
         if audio_segments:
             final_audio = np.concatenate(audio_segments)
             soundfile.write(chapter_wav_path, final_audio, sample_rate)
@@ -183,14 +208,15 @@ def find_cover(book):
 
 
 def print_selected_chapters(document_chapters, chapters):
-    ok = 'X' if platform.system() == 'Windows' else '✅'
+    ok = 'X' if platform.system() == 'Windows' else 'âœ…'
     print(tabulate([
         [i, c.get_name(), len(c.extracted_text), ok if c in chapters else '', chapter_beginning_one_liner(c)]
         for i, c in enumerate(document_chapters, start=1)
     ], headers=['#', 'Chapter', 'Text Length', 'Selected', 'First words']))
 
 
-def gen_audio_segments(pipeline, text, voice, speed, stats=None, max_sentences=None, post_event=None):
+# MODIFICATION 7: Update gen_audio_segments to handle validated_voice
+def gen_audio_segments(pipeline, text, validated_voice, speed, stats=None, max_sentences=None, post_event=None):
     nlp = spacy.load('xx_ent_wiki_sm')
     nlp.add_pipe('sentencizer')
     audio_segments = []
@@ -198,7 +224,8 @@ def gen_audio_segments(pipeline, text, voice, speed, stats=None, max_sentences=N
     sentences = list(doc.sents)
     for i, sent in enumerate(sentences):
         if max_sentences and i > max_sentences: break
-        for gs, ps, audio in pipeline(sent.text, voice=voice, speed=speed, split_pattern=r'\n\n\n'):
+        # MODIFICATION 8: Use validated_voice (could be string or numpy array for blends)
+        for gs, ps, audio in pipeline(sent.text, voice=validated_voice, speed=speed, split_pattern=r'\n\n\n'):
             audio_segments.append(audio)
         if stats:
             stats.processed_chars += len(sent.text)
@@ -210,11 +237,23 @@ def gen_audio_segments(pipeline, text, voice, speed, stats=None, max_sentences=N
     return audio_segments
 
 
+# MODIFICATION 9: Update gen_text function to support blending
 def gen_text(text, voice='af_heart', output_file='text.wav', speed=1, play=False):
-    lang_code = voice[:1]
+    global _kokoro_instance
+    
+    lang_code = voice[0] if not is_voice_blend(voice) else voice.split(',')[0][0]
     pipeline = KPipeline(lang_code=lang_code)
+    _kokoro_instance = pipeline
+    
+    # Validate voice
+    try:
+        validated_voice = validate_voice(voice, pipeline)
+    except Exception as e:
+        print(f"Voice validation error: {e}")
+        return
+    
     load_spacy()
-    audio_segments = gen_audio_segments(pipeline, text, voice=voice, speed=speed);
+    audio_segments = gen_audio_segments(pipeline, text, voice=validated_voice, speed=speed)
     final_audio = np.concatenate(audio_segments)
     soundfile.write(output_file, final_audio, sample_rate)
     if play:
@@ -256,7 +295,7 @@ def is_chapter(c):
 
 def chapter_beginning_one_liner(c, chars=20):
     s = c.extracted_text[:chars].strip().replace('\n', ' ').replace('\r', ' ')
-    return s + '…' if len(s) > 0 else ''
+    return s + 'â€¦' if len(s) > 0 else ''
 
 
 def find_good_chapters(document_chapters):
