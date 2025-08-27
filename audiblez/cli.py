@@ -8,7 +8,8 @@ from audiblez.voices import voices, available_voices_str
 def cli_main():
     voices_str = ', '.join(voices)
     epilog = ('example:\n' +
-              '  audiblez book.epub -l en-us -v af_sky\n\n' +
+              '  audiblez book.epub -l en-us -v af_sky\n' +
+              '  audiblez book.epub -v "af_sarah:60,am_adam:40"  # voice blend\n\n' +
               'to run GUI just run:\n'
               '  audiblez-ui\n\n' +
               'available voices:\n' +
@@ -16,7 +17,9 @@ def cli_main():
     default_voice = 'af_sky'
     parser = argparse.ArgumentParser(epilog=epilog, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument('epub_file_path', help='Path to the epub file')
-    parser.add_argument('-v', '--voice', default=default_voice, help=f'Choose narrating voice: {voices_str}')
+    parser.add_argument('-v', '--voice', default=default_voice, 
+                       help=f'Choose narrating voice: {voices_str}. '
+                            f'Supports blending: "voice1:weight,voice2:weight" (e.g., "af_sarah:60,am_adam:40")')
     parser.add_argument('-p', '--pick', default=False, help=f'Interactively select which chapters to read in the audiobook', action='store_true')
     parser.add_argument('-s', '--speed', default=1.0, help=f'Set speed from 0.5 to 2.0', type=float)
     parser.add_argument('-c', '--cuda', default=False, help=f'Use GPU via Cuda in Torch if available', action='store_true')
