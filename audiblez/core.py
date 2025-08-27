@@ -297,10 +297,23 @@ def concat_wavs_with_ffmpeg(chapter_files, output_folder, filename):
     with open(wav_list_txt, 'w') as f:
         for wav_file in chapter_files:
             f.write(f"file '{wav_file}'\n")
-    concat_file_path = Path(output_folder) / filename.replace('.epub', '.tmp.mp4')
-    subprocess.run(['ffmpeg', '-y', '-f', 'concat', '-safe', '0', '-i', wav_list_txt, '-c', 'copy', concat_file_path])
+    
+    # Change the output to .wav instead of .mp4 to keep it as audio
+    concat_file_path = Path(output_folder) / filename.replace('.epub', '.tmp.wav')
+    
+    # For WAV concatenation, use PCM encoding
+    subprocess.run([
+        'ffmpeg', '-y', 
+        '-f', 'concat', 
+        '-safe', '0', 
+        '-i', wav_list_txt, 
+        '-c:a', 'pcm_s16le',  # Explicitly set PCM codec for WAV
+        concat_file_path
+    ])
+    
     Path(wav_list_txt).unlink()
     return concat_file_path
+
 
 
 def create_m4b(chapter_files, filename, cover_image, output_folder):
@@ -326,21 +339,24 @@ def create_m4b(chapter_files, filename, cover_image, output_folder):
         'ffmpeg',
         '-y',  # Overwrite output
         
-        '-i', f'{concat_file_path}',  # Input audio
+        '-i', f'{concat_file_path}',  # Input audio (now WAV)
         '-i', f'{chapters_txt_path}',  # Input chapters
         *cover_image_args,  # Cover image (if provided)
 
         '-map', '0:a',  # Map audio
-        '-c:a', 'aac',  # Convert to AAC
+        '-c:a', 'aac',  # Convert WAV to AAC for M4B
         '-b:a', '64k',  # Reduce bitrate for smaller size
 
         '-map_metadata', '1', # Map metadata
 
-        '-f', 'mp4',  # Output as M4B
+        '-f', 'mp4',  # Output as M4B (which is MP4)
         f'{final_filename}'  # Output file
     ])
 
     Path(concat_file_path).unlink()
+    if cover_image and Path(output_folder / 'cover').exists():
+        Path(output_folder / 'cover').unlink()  # Clean up cover file
+        
     if proc.returncode == 0:
         print(f'{final_filename} created. Enjoy your audiobook.')
         print('Feel free to delete the intermediary .wav chapter files, the .m4b is all you need.')
