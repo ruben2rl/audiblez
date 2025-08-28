@@ -101,8 +101,6 @@ Notes:
 
 Only two voices can be blended per command (but you can use blends in the GUI).
 If tensor blending fails (e.g., model incompatibility), it falls back to the first voice in the blend.
-Blending is faster than single-voice mode as it's done at the model level claudio.uk.
-Check out real samples and comparisons at claudio.uk.
 
 ## Supported Voices
 
