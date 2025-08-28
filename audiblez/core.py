@@ -8,7 +8,7 @@ import traceback
 from glob import glob
 
 import torch.cuda
-import spacy
+import spacy  # Existing import
 import ebooklib
 import soundfile
 import numpy as np
@@ -26,20 +26,30 @@ from bs4 import BeautifulSoup
 from kokoro import KPipeline
 from ebooklib import epub
 from pick import pick
-# MODIFICATION 1: Import voice validation functions
+# Import voice validation functions
 from audiblez.voices import validate_voice, is_voice_blend
+
+# CHANGE: Add global nlp variable (set to None initially)
+nlp = None
 
 sample_rate = 24000
 
-# MODIFICATION 2: Store kokoro instance globally to pass to validate_voice
-_kokoro_instance = None
-
-
+# CHANGE: Add fallback handling and globalize nlp in load_spacy()
 def load_spacy():
-    if not spacy.util.is_package("xx_ent_wiki_sm"):
-        print("Downloading Spacy model xx_ent_wiki_sm...")
-        spacy.cli.download("xx_ent_wiki_sm")
-
+    global nlp
+    try:
+        if not spacy.util.is_package("xx_ent_wiki_sm"):
+            print("Downloading Spacy model xx_ent_wiki_sm...")
+            spacy.cli.download("xx_ent_wiki_sm")
+        nlp = spacy.load('xx_ent_wiki_sm')
+        nlp.add_pipe('sentencizer')
+        print("Spacy model loaded successfully.")
+    except Exception as e:
+        print(f"Error loading Spacy: {e}. Falling back to en_core_web_sm...")
+        import warnings
+        warnings.warn("xx_ent_wiki_sm not available; using en_core_web_sm.")
+        nlp = spacy.load('en_core_web_sm')
+        nlp.add_pipe('sentencizer')
 
 def set_espeak_library():
     """Find the espeak library path"""
@@ -73,13 +83,11 @@ def set_espeak_library():
         print("On Mac: brew install espeak-ng")
         print("On Linux: sudo apt install espeak-ng")
 
-
 def main(file_path, voice, pick_manually, speed, output_folder='.',
          max_chapters=None, max_sentences=None, selected_chapters=None, post_event=None):
-    global _kokoro_instance
-    
+
     if post_event: post_event('CORE_STARTED')
-    load_spacy()
+    load_spacy()  #Existing call, now updated
     if output_folder != '.':
         Path(output_folder).mkdir(parents=True, exist_ok=True)
 
@@ -121,13 +129,12 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
     eta = strfdelta((stats.total_chars - stats.processed_chars) / stats.chars_per_sec)
     print(f'Estimated time remaining (assuming {stats.chars_per_sec} chars/sec): {eta}')
     set_espeak_library()
-    
-    # MODIFICATION 3: Initialize pipeline and validate voice
+
+    # Initialize pipeline and validate voice
     lang_code = voice[0] if not is_voice_blend(voice) else voice.split(',')[0][0]  # Get lang from first voice in blend
     pipeline = KPipeline(lang_code=lang_code)
-    _kokoro_instance = pipeline  # Store for validate_voice
-    
-    # MODIFICATION 4: Validate voice (handles both single and blended voices)
+
+    # Validate voice (handles both single and blended voices)
     try:
         validated_voice = validate_voice(voice, pipeline)
         print(f"Using voice: {voice}")
@@ -142,7 +149,7 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
         if max_chapters and i > max_chapters: break
         text = chapter.extracted_text
         xhtml_file_name = chapter.get_name().replace(' ', '_').replace('/', '_').replace('\\', '_')
-        # MODIFICATION 5: Update filename to handle blend notation safely
+        # Update filename to handle blend notation safely
         safe_voice_name = voice.replace(':', '-').replace(',', '+')
         chapter_wav_path = Path(output_folder) / filename.replace(extension, f'_chapter_{i}_{safe_voice_name}_{xhtml_file_name}.wav')
         chapter_wav_files.append(chapter_wav_path)
@@ -161,8 +168,8 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
             text = f'{title} â€" {creator}.\n\n' + text
         start_time = time.time()
         if post_event: post_event('CORE_CHAPTER_STARTED', chapter_index=chapter.chapter_index)
-        
-        # MODIFICATION 6: Pass validated_voice instead of original voice
+
+        # Pass validated_voice (could be string or tensor)
         audio_segments = gen_audio_segments(
             pipeline, text, validated_voice, speed, stats, post_event=post_event, max_sentences=max_sentences)
         if audio_segments:
@@ -182,7 +189,6 @@ def main(file_path, voice, pick_manually, speed, output_folder='.',
         create_index_file(title, creator, chapter_wav_files, output_folder)
         create_m4b(chapter_wav_files, filename, cover_image, output_folder)
         if post_event: post_event('CORE_FINISHED')
-
 
 def find_cover(book):
     def is_image(item):
@@ -206,7 +212,6 @@ def find_cover(book):
 
     return None
 
-
 def print_selected_chapters(document_chapters, chapters):
     ok = 'X' if platform.system() == 'Windows' else 'âœ…'
     print(tabulate([
@@ -214,19 +219,29 @@ def print_selected_chapters(document_chapters, chapters):
         for i, c in enumerate(document_chapters, start=1)
     ], headers=['#', 'Chapter', 'Text Length', 'Selected', 'First words']))
 
-
-# MODIFICATION 7: Update gen_audio_segments to handle validated_voice
+# CHANGE: Updated gen_audio_segments to use global nlp and add check/error handling
 def gen_audio_segments(pipeline, text, validated_voice, speed, stats=None, max_sentences=None, post_event=None):
-    nlp = spacy.load('xx_ent_wiki_sm')
-    nlp.add_pipe('sentencizer')
+    """Generate audio segments with tensor-level voice support."""
+    global nlp
+    if nlp is None:
+        raise RuntimeError("NLP model not loaded. Run load_spacy() first.")
     audio_segments = []
     doc = nlp(text)
     sentences = list(doc.sents)
+
     for i, sent in enumerate(sentences):
         if max_sentences and i > max_sentences: break
-        # MODIFICATION 8: Use validated_voice (could be string or numpy array for blends)
-        for gs, ps, audio in pipeline(sent.text, voice=validated_voice, speed=speed, split_pattern=r'\n\n\n'):
-            audio_segments.append(audio)
+
+        # Handle both string voice names and tensor voices (for blending)
+        if isinstance(validated_voice, str):
+            # Regular string voice - load it first
+            for gs, ps, audio in pipeline(sent.text, voice=validated_voice, speed=speed, split_pattern=r'\n\n\n'):
+                audio_segments.append(audio)
+        else:
+            # Tensor voice (blended) - use directly
+            for gs, ps, audio in pipeline(sent.text, voice=validated_voice, speed=speed, split_pattern=r'\n\n\n'):
+                audio_segments.append(audio)
+
         if stats:
             stats.processed_chars += len(sent.text)
             stats.progress = stats.processed_chars * 100 // stats.total_chars
@@ -236,29 +251,24 @@ def gen_audio_segments(pipeline, text, validated_voice, speed, stats=None, max_s
             print('Progress:', f'{stats.progress}%\n')
     return audio_segments
 
-
-# MODIFICATION 9: Update gen_text function to support blending
 def gen_text(text, voice='af_heart', output_file='text.wav', speed=1, play=False):
-    global _kokoro_instance
-    
+    """Generate text with tensor-level voice blending support."""
     lang_code = voice[0] if not is_voice_blend(voice) else voice.split(',')[0][0]
     pipeline = KPipeline(lang_code=lang_code)
-    _kokoro_instance = pipeline
-    
+
     # Validate voice
     try:
         validated_voice = validate_voice(voice, pipeline)
     except Exception as e:
         print(f"Voice validation error: {e}")
         return
-    
-    load_spacy()
-    audio_segments = gen_audio_segments(pipeline, text, voice=validated_voice, speed=speed)
+
+    load_spacy()  # CHANGE: Ensure SpaCy is loaded here too
+    audio_segments = gen_audio_segments(pipeline, text, validated_voice, speed)
     final_audio = np.concatenate(audio_segments)
     soundfile.write(output_file, final_audio, sample_rate)
     if play:
         subprocess.run(['ffplay', '-autoexit', '-nodisp', output_file])
-
 
 def find_document_chapters_and_extract_texts(book):
     """Returns every chapter that is an ITEM_DOCUMENT and enriches each chapter with extracted_text."""
@@ -279,7 +289,6 @@ def find_document_chapters_and_extract_texts(book):
         c.chapter_index = i  # this is used in the UI to identify chapters
     return document_chapters
 
-
 def is_chapter(c):
     name = c.get_name().lower()
     has_min_len = len(c.extracted_text) > 100
@@ -292,11 +301,9 @@ def is_chapter(c):
     )
     return has_min_len and title_looks_like_chapter
 
-
 def chapter_beginning_one_liner(c, chars=20):
     s = c.extracted_text[:chars].strip().replace('\n', ' ').replace('\r', ' ')
     return s + 'â€¦' if len(s) > 0 else ''
-
 
 def find_good_chapters(document_chapters):
     chapters = [c for c in document_chapters if c.get_type() == ebooklib.ITEM_DOCUMENT and is_chapter(c)]
@@ -304,7 +311,6 @@ def find_good_chapters(document_chapters):
         print('Not easy to recognize the chapters, defaulting to all non-empty documents.')
         chapters = [c for c in document_chapters if c.get_type() == ebooklib.ITEM_DOCUMENT and len(c.extracted_text) > 10]
     return chapters
-
 
 def pick_chapters(chapters):
     # Display the document name, the length and first 50 characters of the text
@@ -316,7 +322,6 @@ def pick_chapters(chapters):
     selected_chapters_out_of_order = [chapters_by_names[r[0]] for r in ret]
     selected_chapters = [c for c in chapters if c in selected_chapters_out_of_order]
     return selected_chapters
-
 
 def strfdelta(tdelta, fmt='{D:02}d {H:02}h {M:02}m {S:02}s'):
     remainder = int(tdelta)
@@ -330,30 +335,27 @@ def strfdelta(tdelta, fmt='{D:02}d {H:02}h {M:02}m {S:02}s'):
             values[field], remainder = divmod(remainder, constants[field])
     return f.format(fmt, **values)
 
-
 def concat_wavs_with_ffmpeg(chapter_files, output_folder, filename):
     wav_list_txt = Path(output_folder) / filename.replace('.epub', '_wav_list.txt')
     with open(wav_list_txt, 'w') as f:
         for wav_file in chapter_files:
             f.write(f"file '{wav_file}'\n")
-    
+
     # Change the output to .wav instead of .mp4 to keep it as audio
     concat_file_path = Path(output_folder) / filename.replace('.epub', '.tmp.wav')
-    
+
     # For WAV concatenation, use PCM encoding
     subprocess.run([
-        'ffmpeg', '-y', 
-        '-f', 'concat', 
-        '-safe', '0', 
-        '-i', wav_list_txt, 
+        'ffmpeg', '-y',
+        '-f', 'concat',
+        '-safe', '0',
+        '-i', wav_list_txt,
         '-c:a', 'pcm_s16le',  # Explicitly set PCM codec for WAV
         concat_file_path
     ])
-    
+
     Path(wav_list_txt).unlink()
     return concat_file_path
-
-
 
 def create_m4b(chapter_files, filename, cover_image, output_folder):
     concat_file_path = concat_wavs_with_ffmpeg(chapter_files, output_folder, filename)
@@ -377,7 +379,7 @@ def create_m4b(chapter_files, filename, cover_image, output_folder):
     proc = subprocess.run([
         'ffmpeg',
         '-y',  # Overwrite output
-        
+
         '-i', f'{concat_file_path}',  # Input audio (now WAV)
         '-i', f'{chapters_txt_path}',  # Input chapters
         *cover_image_args,  # Cover image (if provided)
@@ -395,17 +397,15 @@ def create_m4b(chapter_files, filename, cover_image, output_folder):
     Path(concat_file_path).unlink()
     if cover_image and Path(output_folder / 'cover').exists():
         Path(output_folder / 'cover').unlink()  # Clean up cover file
-        
+
     if proc.returncode == 0:
         print(f'{final_filename} created. Enjoy your audiobook.')
         print('Feel free to delete the intermediary .wav chapter files, the .m4b is all you need.')
-
 
 def probe_duration(file_name):
     args = ['ffprobe', '-i', file_name, '-show_entries', 'format=duration', '-v', 'quiet', '-of', 'default=noprint_wrappers=1:nokey=1']
     proc = subprocess.run(args, capture_output=True, text=True, check=True)
     return float(proc.stdout.strip())
-
 
 def create_index_file(title, creator, chapter_mp3_files, output_folder):
     with open(Path(output_folder) / "chapters.txt", "w", encoding="utf-8") as f:
@@ -419,7 +419,6 @@ def create_index_file(title, creator, chapter_mp3_files, output_folder):
             i += 1
             start = end
 
-
 def unmark_element(element, stream=None):
     """auxiliarry function to unmark markdown text"""
     if stream is None:
@@ -431,7 +430,6 @@ def unmark_element(element, stream=None):
     if element.tail:
         stream.write(element.tail)
     return stream.getvalue()
-
 
 def unmark(text):
     """Unmark markdown text"""
